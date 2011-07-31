@@ -1,0 +1,86 @@
+/**
+ * @file InputSource.hpp
+ * @author Anqi Xu
+ */
+
+
+#ifndef INPUTSOURCE_HPP_
+#define INPUTSOURCE_HPP_
+
+
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <string>
+#include <boost/date_time/posix_time/posix_time.hpp>
+
+using namespace boost::posix_time;
+
+namespace input {
+
+// NOTE: These classes are designed to block at getFrame() until the next
+//       frame is synchronized (e.g. available in case of capture device,
+//       past corresponding timing in case of video or synchronized image file).
+//       This feature can be disabled by calling setTimeSync(false) when
+//       desired (e.g. immediately after construction).
+class InputSource {
+public:
+  typedef enum {UNKNOWN_SOURCE, STUB_SOURCE, IMAGE_LIST_SOURCE, \
+    LOGGED_IMAGE_LIST_SOURCE, VIDEO_DEVICE_SOURCE, VIDEO_FILE_SOURCE, \
+  } SourceType;
+
+  // NOTE: Children constructors should NOT load internal buffers, and delay
+  //       loading to initSource(). This would allow multiple initSource()/
+  //       stopSource() function calls.
+  InputSource(double timeMult) : type(UNKNOWN_SOURCE), \
+      width(-1), height(-1), alive(false), \
+      startTime(), hasStartTime(false), prevTime(), elapsedTime(), \
+      timeMultiplier(timeMult <= 0 ? 0 : timeMult) {};
+  virtual ~InputSource() {};
+
+  // NOTE: This function is responsible for setting width, height, alive, timeSync
+  virtual void initSource() throw (const std::string&) = 0;
+  // NOTE: This function is responsible for setting alive
+  virtual void stopSource() = 0;
+  // NOTE: If no frame is available, return false BUT DO NOT CALL stopSource()
+  // NOTE: All derived implementations MUST provide blocking functionality if
+  //       timeSync is enabled and when time between consecutive frames is longer
+  //       than wall time between consecutive getFrame() calls
+  virtual bool getFrame(cv::Mat& userBuf) = 0;
+
+  int getWidth() { return width; };
+  int getHeight() { return height; };
+  double getAspectRatio() { return (double) width / height; };
+  bool isAlive() { return alive; };
+  double getTimeMultiplier() { return timeMultiplier; };
+  void setTimeMultiplier(double newMult);
+  SourceType getType() { return type; };
+
+  static void parseImageFileHeader(const std::string& firstImageFilename, \
+      std::string& headerBuf, std::string& extensionBuf, \
+      int& firstImageIDBuf, unsigned int& numDigitsBuf) \
+      throw (const std::string&);
+
+protected:
+  SourceType type;
+  cv::Mat imgBuf;
+  int width;
+  int height;
+  bool alive;
+
+  // NOTE: For time synchronization, update the following 3 members together
+  ptime startTime;
+  bool hasStartTime;
+  ptime prevTime;
+  time_duration elapsedTime;
+  double timeMultiplier;
+
+private:
+  // Disable copy constructor and copy assignment operator
+  InputSource(const InputSource& rhs) {};
+  InputSource& operator=(const InputSource& rhs) {return *this; };
+};
+
+} // namespace input
+
+
+#endif /* INPUTSOURCE_HPP_ */

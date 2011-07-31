@@ -1,0 +1,16 @@
+<package>
+  <description brief="media_server">
+
+     media_server
+
+  </description>
+  <author>MiMiC</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/media_server</url>
+  <depend package="roscpp"/>
+  <depend package="std_srvs"/>
+  <depend package="std_msgs"/>
+  <depend package="sensor_msgs"/>
+  <depend package="cv_bridge"/>
+</package>
