@@ -4,10 +4,10 @@
  */
 
 
-#include "VideoFileSource.h"
+#include "VideoFileSource.hpp"
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
-#include <boost/thread/thread.hpp>
+#include <boost/thread/thread.hpp> // Needed for sleep()
 
 
 using namespace std;
@@ -35,7 +35,7 @@ void VideoFileSource::initSource() throw (const std::string&) {
   fs::path sourceFilepath = fs::complete(fs::path(sourceFile));
   if (!vid.open(sourceFilepath.string())) {
     ostringstream err;
-	err << "Could not find/load video file: " << sourceFilepath.string();
+	err << "Could not find or load video file: " << sourceFilepath.string();
     throw err.str();
   }
 
@@ -61,11 +61,9 @@ void VideoFileSource::stopSource() {
 
 
 bool VideoFileSource::getFrame(cv::Mat& userBuf) {
-  cv::Mat localBuf;
-
   // Ensure that source is loaded and ready to spit out frames
   if (vid.isOpened()) {
-    if (timeMultiplier != 0) {
+    if (timeMultiplier > 0) {
       if (hasStartTime) {
         ptime currTime;
         time_duration td;
@@ -88,44 +86,64 @@ bool VideoFileSource::getFrame(cv::Mat& userBuf) {
           // ... until wall time between queries is shorter than
           // frame gap
           diffUSEC = currVidUSEC - (long) elapsedTime.total_microseconds();
-          if (diffUSEC >= 0) {
-            vid.retrieve(localBuf);
-            userBuf = localBuf.clone();
+          if (diffUSEC >= 0) { // Local frame is valid; return to user
+            // The following retrieve-clone procedure is necessary, as indicated
+            // by the documentation of VideoCapture::retrieve(), which uses
+            // the C function cvRetrieveFrame() internally
+            vid.retrieve(imageBuf);
+            if (imageBuf.empty()) { // If something went wrong in vid.retrieve()
+              return false;
+            } else {
+              imageBuf.copyTo(userBuf);
+            }
 
             // Sleep a bit to synchronize wall time with video time
             currTime = microsec_clock::local_time();
             td = currTime - prevTime;
             elapsedTime += td * timeMultiplier;
             prevTime = currTime;
-            diffUSEC = currVidUSEC - (long) elapsedTime.total_microseconds();
+            // NOTE: the division of timeMultiplier in the following duration
+            //       calculation is needed to convert from frame-time to wall-time
+            diffUSEC = (long) floor( (currVidUSEC - \
+                elapsedTime.total_microseconds()) / timeMultiplier );
             if (diffUSEC > 0) {
               boost::this_thread::sleep(boost::posix_time::microseconds( \
                   diffUSEC));
             }
             return true;
           }
-
-          // WARNING: THIS ALGORITHM WILL FAIL IF THE TIME TAKEN TO
-          //          GRAB THE NEXT FRAME IS ALWAYS LONGER THAN
-          //          THE INCREMENTAL TIME PERIOD BETWEEN CONSECUTIVE
-          //          FRAMES!
         }
-      } else { // First request: return next frame and log current time
+      } else { // First request: return next frame and record start time
         if (vid.grab()) {
           startTime = microsec_clock::local_time();
           hasStartTime = true;
           prevTime = startTime;
           elapsedTime = seconds(0);
-          vid.retrieve(localBuf);
-          userBuf = localBuf.clone();
-          return true;
+
+          // The following retrieve-clone procedure is necessary, as indicated
+          // by the documentation of VideoCapture::retrieve(), which uses
+          // the C function cvRetrieveFrame() internally
+          vid.retrieve(imageBuf);
+          if (imageBuf.empty()) {
+            return false;
+          } else {
+            imageBuf.copyTo(userBuf);
+            return true;
+          }
         }
       }
-    } else { // Not time synchronized
+    } else { // Not time-synchronized
       if (vid.grab()) {
-        vid.retrieve(localBuf);
-        userBuf = localBuf.clone();
-        return true;
+        // The following retrieve-clone procedure is necessary, as indicated
+        // by the documentation of VideoCapture::retrieve(), which uses
+        // the C function cvRetrieveFrame() internally
+        vid.retrieve(imageBuf);
+        if (imageBuf.empty()) {
+          return false;
+        } else {
+          imageBuf.copyTo(userBuf);
+          return true;
+        }
       }
     }
   }

@@ -4,7 +4,7 @@
  */
 
 
-#include "StubSource.h"
+#include "StubSource.hpp"
 
 
 using namespace std;
@@ -27,7 +27,7 @@ StubSource::StubSource(unsigned int imgWidth, unsigned int imgHeight) : \
     height = DEFAULT_IMG_HEIGHT;
   }
 
-  stubImg.create(height, width, DEFAULT_IMG_TYPE);
+  imageBuf.create(height, width, DEFAULT_IMG_TYPE);
 };
 
 
@@ -46,24 +46,22 @@ void StubSource::stopSource() {
 
 
 bool StubSource::getFrame(cv::Mat& userBuf) {
-  userBuf = stubImg.clone();
+  imageBuf.copyTo(userBuf);
   return true;
 };
 
 
 void StubSource::setWidth(unsigned int newImgWidth) {
-  if (newImgWidth > 0) {
+  if (width != (int) newImgWidth && newImgWidth > 0) {
     width = newImgWidth;
+    imageBuf.create(height, width, DEFAULT_IMG_TYPE);
   }
-
-  stubImg.create(height, width, DEFAULT_IMG_TYPE);
 };
 
 
 void StubSource::setHeight(unsigned int newImgHeight) {
-  if (newImgHeight > 0) {
+  if (height != (int) newImgHeight && newImgHeight > 0) {
     height = newImgHeight;
+    imageBuf.create(height, width, DEFAULT_IMG_TYPE);
   }
-
-  stubImg.create(height, width, DEFAULT_IMG_TYPE);
 };

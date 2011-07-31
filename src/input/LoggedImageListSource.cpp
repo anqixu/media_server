@@ -1,21 +1,10 @@
 /**
  * @file LoggedImageListSource.cpp
  * @author Anqi Xu
- *
- * WARNING: The contents of ProcerusHeader.h and all other code that depend
- *          or use the Procerus' communication protocol are issued under a
- *          non-disclosure agreement (NDA) between McGill University - Mobile
- *          Robotics Lab and Procerus Inc. In addition, the communication
- *          specifications used to communicate to the Procerus Unicorn unit,
- *          the commbox unit, and the Virtual Cockpit software is controlled
- *          by ITAR export document. As such, it is imperative that projects
- *          using this code be restricted to usage by McGill MRL members only.
- *
- *          > DO NOT DISTRIBUTE WITHOUT CONSENT FROM PROF. GREGORY DUDEK. <
  */
 
 
-#include "LoggedImageListSource.h"
+#include "LoggedImageListSource.hpp"
 #include <boost/algorithm/string.hpp>
 #include <boost/thread/thread.hpp>
 #include <iostream>
@@ -83,6 +72,11 @@ void LoggedImageListSource::initSource() throw (const std::string&) {
     istringstream lineStream(line);
     lineStream >> currImageID >> currTimeString;
 
+    // NOTE: during loading, the variables hasStartTime, startTime, currTime
+    //       are used temporarily with different meanings; for instance
+    //       hasStartTime represents the start time in the image list within
+    //       the log file, and thus should NOT be confused with its usage in
+    //       getFrame() (see end of this function)
     if (hasStartTime) {
       // Make sure imageID is contiguous
       if (currImageID - prevImageID != 1) {
@@ -90,7 +84,7 @@ void LoggedImageListSource::initSource() throw (const std::string&) {
         alive = false;
         ostringstream err;
         err << "Found non-contiguous imageID sequence between # " << \
-            prevImageID << " & " << currImageID;
+            prevImageID << " & " << currImageID << " in log file";
         throw err.str();
       }
       prevImageID = currImageID;
@@ -119,7 +113,7 @@ void LoggedImageListSource::initSource() throw (const std::string&) {
   } // while (!logFile.eof())
 
   // Rewind file to beginning in preparations for reading telemetry
-  logFile.clear();
+  logFile.clear(); // This clears the internal flags
   logFile.seekg(0, ios::beg);
   line.clear();
 
@@ -142,38 +136,45 @@ void LoggedImageListSource::stopSource() {
   hasStartTime = false;
   firstImageID = -1;
   lastImageID = -1;
+  fileID = -1;
+  fileIDOffset = -1;
   line.clear();
 };
 
 
 bool LoggedImageListSource::getFrame(cv::Mat& userBuf) {
-  if (timeMultiplier != 0) {
-    if (fileID < 0) { // First getFrame() call
-      fileID = 0;
+  if (timeMultiplier > 0) {
+    if (!hasStartTime || fileID < 0) { // First getFrame() call
+      fileID = 0; // Recall that current image ID = fileID + fileIDOffset
       startTime = microsec_clock::local_time();
       hasStartTime = true;
       prevTime = startTime;
       elapsedTime = seconds(0);
     } else {
-      // If no more frames, then return false
+      // If no more frames, then terminate immediately
       if ((unsigned int) fileID + 1 >= timeIndicesUSEC.size()) {
         return false;
       }
 
-      // Compute elapsed time since first getFrame() call
+      // Compute elapsed time since first (not a typo) getFrame() call
       ptime currTime = microsec_clock::local_time();
       time_duration td = currTime - prevTime;
-      elapsedTime += td * timeMultiplier;
-      prevTime = currTime;
+      elapsedTime += td * timeMultiplier; // Note the += ...
+      prevTime = currTime; // (thus duration computed from first getFrame() call)
+      // NOTE: elapsedTime is within the image-list-time frame, thus
+      //       any updates to this variable need to consider timeMultiplier
 
-      // If next frame is not available yet, then sleep a bit
-      long timeGap = \
-          (long) (timeIndicesUSEC[fileID+1] - elapsedTime.total_microseconds());
-      if (timeGap > 0) {
-        boost::this_thread::sleep(boost::posix_time::microseconds(timeGap));
-        fileID++;
+      fileID++; // Update file index to next frame
+      long timeGapUSEC = \
+          (long) (timeIndicesUSEC[fileID] - elapsedTime.total_microseconds());
+      if (timeGapUSEC > 0) { // If next frame is not available yet, then sleep a bit
+        // NOTE: the previous duration is computed in frame-time and not
+        //       wall-time, thus we need to factor out timeMultiplier
+        //       when using it in real space (a.k.a. wall time)
+        timeGapUSEC = (long) floor(timeGapUSEC / timeMultiplier);
+
+        boost::this_thread::sleep(boost::posix_time::microseconds(timeGapUSEC));
       } else { // Else skip over frames until time gap is longer than elapsed time
-        fileID++;
         while ((unsigned int) fileID < timeIndicesUSEC.size() && \
             (timeIndicesUSEC[fileID] < elapsedTime.total_microseconds())) {
           fileID++;
@@ -182,6 +183,18 @@ bool LoggedImageListSource::getFrame(cv::Mat& userBuf) {
         // If no more frames, then return false
         if ((unsigned int) fileID >= timeIndicesUSEC.size()) {
           return false;
+        } else { // Sleep until it's time to display next image
+          // Begin by updating time
+          // (difference should be insignificant, but be cautious nevertheless)
+          currTime = microsec_clock::local_time();
+          time_duration td = currTime - prevTime;
+          elapsedTime += td * timeMultiplier;
+          prevTime = currTime;
+
+          timeGapUSEC = \
+              (long) floor( (timeIndicesUSEC[fileID] - \
+                  elapsedTime.total_microseconds()) / timeMultiplier );
+          boost::this_thread::sleep(boost::posix_time::microseconds(timeGapUSEC));
         }
       }
     }
@@ -191,20 +204,19 @@ bool LoggedImageListSource::getFrame(cv::Mat& userBuf) {
 
   // Increment numDigits if necessary
   unsigned int newDigitCount = \
-      (unsigned int) floor(log10((double) fileID)) + 1;
+      (unsigned int) floor(log10((double) fileIDOffset + fileID)) + 1;
   if (newDigitCount > numDigitsInFilename) {
     numDigitsInFilename = newDigitCount;
   }
 
-  // Load image and set dimensions
+  // Load image directly into caller's buffer, and then update image dimensions
   ostringstream imageFilename;
   imageFilename << fileHeader << setfill('0') << \
       setw(numDigitsInFilename) << fileIDOffset + fileID << fileExtension;
-  cv::Mat localBuf = cv::imread(imageFilename.str()); // Assume format is BGR
-  if (localBuf.empty()) { // Image failed to load
+  userBuf = cv::imread(imageFilename.str()); // Assume format is BGR
+  if (userBuf.empty()) { // Image failed to load
     return false;
   }
-  userBuf = localBuf.clone();
   width = userBuf.rows;
   height = userBuf.cols;
 
@@ -212,61 +224,21 @@ bool LoggedImageListSource::getFrame(cv::Mat& userBuf) {
 };
 
 
-bool LoggedImageListSource::getTelem(logTelem& buf) {
+bool LoggedImageListSource::getTelem(logTelem* buf) {
+  if (buf == NULL) {
+    return false;
+  }
+
   try {
     seekForFileID();
   } catch(const std::string& err) {
-    cout << "ERROR > " << err << endl;
+    //cout << "ERROR > " << err << endl;
     return false;
   }
 
   string iso_string;
   istringstream lineStream(line);
-  lineStream >> buf.image_ID >> iso_string >> \
-
-      buf.UTC_year >> buf.UTC_month >> buf.UTC_day >> buf.UTC_hour >> \
-      buf.UTC_minute >> buf.UTC_sec >> buf.UTC_millisec >> \
-
-      buf.UAV_altitude_HAL >> buf.UAV_altitude_HAL_desired >> \
-      buf.UAV_altitude_MSL >> buf.UAV_altitude_MSL_GPS >> \
-      buf.Home_altitude_MSL >> \
-
-      buf.UAV_velocity >> buf.UAV_velocity_GPS >> buf.UAV_velocity_desired >> \
-
-      buf.UAV_latitude >> buf.UAV_longitude >> buf.UAV_latitude_desired >> \
-      buf.UAV_longitude_desired >> buf.Home_latitude >> buf.Home_longitude >> \
-
-      buf.time_to_target >> buf.distance_to_target >> buf.heading_to_target >> \
-
-      buf.roll >> buf.roll_desired >> buf.pitch >> buf.pitch_desired >> \
-
-      buf.roll_rate >> buf.pitch_rate >> buf.yaw_rate >> buf.turn_rate >> \
-      buf.turn_rate_desired >> buf.climb_rate >> buf.climb_rate_desired >> \
-
-      buf.heading >> buf.heading_magnetometer >> buf.heading_GPS >> \
-      buf.heading_desired >> \
-
-      buf.gimbal_azimuth >> buf.gimbal_elevation >> buf.camera_horiz_fov >> \
-
-      buf.aileron_angle >> buf.elevator_angle >> buf.rudder_angle >> \
-
-      buf.GPS_num_satellites >> buf.GPS_RSSI >> buf.throttle >> \
-
-      buf.engineSpeed >> buf.aux_1_servo_pos >> buf.aux_2_servo_pos >> \
-
-      buf.temperature >> buf.wind_heading >> buf.wind_speed >> \
-
-      buf.current_draw >> buf.battery_voltage >> buf.servo_voltage >> \
-      buf.alt_voltage >> \
-
-      buf.UAV_mode >> buf.alt_tracker_mode >> buf.current_command >> \
-      buf.nav_state >> \
-
-      buf.airborne_time >> buf.home_lock_timer >> buf.takeoff_timer >> \
-
-      buf.system_status >> buf.failsafe_status_1 >> buf.system_flags_1 >> \
-      buf.system_flags_2 >> buf.system_flags_3 >> buf.system_flags_4 >> \
-      buf.system_flags_5 >> buf.navigation_FLC;
+  lineStream >> buf->image_ID;
 
   // Check for error flags prior to last entry
   if (!lineStream.good()) { // NOTE: can use good() here since don't expect EOF yet
@@ -274,13 +246,13 @@ bool LoggedImageListSource::getTelem(logTelem& buf) {
   }
 
   // Parse last entry and then check for error flags
-  lineStream >> buf.user_IO_pins;
+  lineStream >> iso_string;
   if ((!lineStream.rdstate() & (ifstream::failbit | ifstream::badbit)) != 0) {
     return false;
   }
 
-  // Parse system time
-  buf.sys_time = from_iso_string(iso_string);
+  // Parse system time into numeric format
+  buf->sys_time = from_iso_string(iso_string);
 
   return true;
 };
@@ -321,10 +293,11 @@ void LoggedImageListSource::setImageID(int desiredID) throw (const std::string&)
 
 
 void LoggedImageListSource::seekForFileID() throw (const std::string&) {
-  // Seek for log entry
   int currImageID;
 
-  if (line.length() > 0) {
+  // Check if seeked entry is either equals or smaller than the current
+  // line in the log file
+  if (line.length() > 0 && line[0] != '%') {
     istringstream lineStream(line);
     lineStream >> currImageID;
     if (currImageID == fileIDOffset + fileID) {
@@ -339,6 +312,8 @@ void LoggedImageListSource::seekForFileID() throw (const std::string&) {
     }
   }
 
+  // The seeked entry is larger than the current line in the log file, hence
+  // iteratively seek for the correct line in the log file
   while (!logFile.eof()) {
     // Skip blank lines or lines with comments
     getline(logFile, line);
@@ -352,7 +327,6 @@ void LoggedImageListSource::seekForFileID() throw (const std::string&) {
     if (currImageID == fileIDOffset + fileID) {
       return;
     } else if (currImageID > fileIDOffset + fileID) {
-      stopSource();
       ostringstream err;
       err << "Image ID in log (" << currImageID << \
           ") is larger than expected image ID (" << \
@@ -362,7 +336,6 @@ void LoggedImageListSource::seekForFileID() throw (const std::string&) {
   }
 
   // If execution arrives here then throw error
-  stopSource();
   ostringstream err;
   err << "Could not find image ID (" << fileIDOffset + fileID << \
         ") in log file.";

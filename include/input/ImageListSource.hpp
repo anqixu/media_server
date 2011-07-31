@@ -21,14 +21,17 @@ public:
 
   void initSource() throw (const std::string&);
   void initSource(const std::string& newFirstImage, \
-      double newFPS = 15) throw (const std::string&) \
-      { inputFilename = newFirstImage; framesPerSec = newFPS; initSource(); };
+      double newFPS = DEFAULT_FPS) throw (const std::string&) {
+    inputFilename = newFirstImage;
+    framesPerSec = (newFPS > 0) ? newFPS : 0;
+    initSource();
+  };
   void stopSource();
   // NOTE: If this function returns a false value, then it is recommended
   //       to proceed by calling stopSource() and initSource(newFirstImage)
   bool getFrame(cv::Mat& userBuf);
 
-  const static double DEFAULT_FPS = 15;
+  const static double DEFAULT_FPS = 15.;
 
 private:
   bool parseFileHeader(const std::string& imageFilename) \

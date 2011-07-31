@@ -4,9 +4,10 @@
  */
 
 
-#include "InputSource.h"
+#include "InputSource.hpp"
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
+#include <boost/lexical_cast.hpp>
 
 
 using namespace std;
@@ -39,7 +40,8 @@ void InputSource::parseImageFileHeader(const string& firstImageFilename, \
     charIndex++;
 
     // Parse image ID and set filepath header
-    tempInt = atoi(headerBuf.substr(charIndex, numDigitsBuf).c_str());
+    //tempInt = atoi(headerBuf.substr(charIndex, numDigitsBuf).c_str());
+    tempInt = boost::lexical_cast<int>(headerBuf.substr(charIndex, numDigitsBuf));
     if (tempInt < 0) {
       throw string("Found negative image ID");
     }
@@ -54,11 +56,14 @@ void InputSource::parseImageFileHeader(const string& firstImageFilename, \
 
 
 void InputSource::setTimeMultiplier(double newMult) {
+  // Update elapsed run-time till current instant using previous multiplier
   if (alive && hasStartTime && timeMultiplier > 0) {
     ptime currTime = microsec_clock::local_time();
     time_duration td = currTime - prevTime;
     elapsedTime += td*timeMultiplier;
     prevTime = currTime;
   }
+
+  // Update multiplier
   timeMultiplier = (newMult > 0) ? newMult : 0;
 };

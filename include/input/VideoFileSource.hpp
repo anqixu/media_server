@@ -8,7 +8,7 @@
 #define VIDEOFILESOURCE_HPP_
 
 
-#include "InputSource.h"
+#include "InputSource.hpp"
 
 
 namespace input {

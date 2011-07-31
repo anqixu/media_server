@@ -1,22 +1,11 @@
 /**
- * @file LoggedImageListSource.h
+ * @file LoggedImageListSource.hpp
  * @author Anqi Xu
- *
- * WARNING: The contents of ProcerusHeader.h and all other code that depend
- *          or use the Procerus' communication protocol are issued under a
- *          non-disclosure agreement (NDA) between McGill University - Mobile
- *          Robotics Lab and Procerus Inc. In addition, the communication
- *          specifications used to communicate to the Procerus Unicorn unit,
- *          the commbox unit, and the Virtual Cockpit software is controlled
- *          by ITAR export document. As such, it is imperative that projects
- *          using this code be restricted to usage by McGill MRL members only.
- *
- *          > DO NOT DISTRIBUTE WITHOUT CONSENT FROM PROF. GREGORY DUDEK. <
  */
 
 
-#ifndef LOGGEDIMAGESOURCE_HPP_
-#define LOGGEDIMAGESOURCE_HPP_
+#ifndef LOGGEDIMAGELISTSOURCE_HPP_
+#define LOGGEDIMAGELISTSOURCE_HPP_
 
 
 #include "InputSource.hpp"
@@ -29,116 +18,38 @@ namespace input {
 struct logTelem {
   int image_ID;
   ptime sys_time;
-  int UTC_year;
-  int UTC_month;
-  int UTC_day;
-  int UTC_hour;
-  int UTC_minute;
-  int UTC_sec;
-  int UTC_millisec;
-
-  float UAV_altitude_HAL; // m
-  float UAV_altitude_HAL_desired; // m
-  float UAV_altitude_MSL; // m
-  float UAV_altitude_MSL_GPS; // m
-  float Home_altitude_MSL; // m
-
-  float UAV_velocity; // m/s
-  float UAV_velocity_GPS; // m/s
-  float UAV_velocity_desired; // m/s
-
-  float UAV_latitude; // deg
-  float UAV_longitude; // deg
-  float UAV_latitude_desired; // deg
-  float UAV_longitude_desired; // deg
-  float Home_latitude; // deg
-  float Home_longitude; // deg
-
-  float time_to_target; // sec
-  float distance_to_target; // m
-  float heading_to_target; // deg
-
-  float roll; // deg
-  float roll_desired; // deg
-  float pitch; // deg
-  float pitch_desired; // deg
-
-  float roll_rate; // deg/s
-  float pitch_rate; // deg/s
-  float yaw_rate; // deg/s
-  float turn_rate; // deg/s
-  float turn_rate_desired; // deg/s
-  float climb_rate; // deg/s
-  float climb_rate_desired; // deg/s
-
-  float heading; // deg
-  float heading_magnetometer; // deg
-  float heading_GPS; // deg
-  float heading_desired; // deg
-
-  float gimbal_azimuth; // deg
-  float gimbal_elevation; // deg
-  float camera_horiz_fov; // deg
-
-  float aileron_angle; // deg
-  float elevator_angle; // deg
-  float rudder_angle; // deg
-
-  int GPS_num_satellites; // #
-  int GPS_RSSI; // dB
-  int throttle; // %
-
-  float engineSpeed; // rev/min
-  float aux_1_servo_pos; // deg
-  float aux_2_servo_pos; // deg
-
-  float temperature; // 'C
-  float wind_heading; // deg
-  float wind_speed; // m/s
-
-  float current_draw; // A
-  float battery_voltage; // V
-  float servo_voltage; // V
-  float alt_voltage; // V
-
-  int UAV_mode;
-  int alt_tracker_mode;
-  int current_command;
-  int nav_state;
-
-  float airborne_time; // sec
-  float home_lock_timer; // sec
-  float takeoff_timer; // sec
-
-  int system_status;
-  int failsafe_status_1;
-  int system_flags_1;
-  int system_flags_2;
-  int system_flags_3;
-  int system_flags_4;
-  int system_flags_5;
-  int navigation_FLC;
-  int user_IO_pins;
 };
 
 
+// This is a generic logged image list loader, to load a sequence of image
+// of the format [HEADER]_[IMAGE_ID].[EXT], accompanied with the log file
+// [HEADER]_[FIRST_ID].[LOGFILE_EXTENSION]. The log file is assumed to
+// contain space-deliminated telemetry entries for each of the images in
+// the sequence, of the format:
+//
+// % This is a comment line, where % is the escape character
+// [IMAGE_ID] [PTIME_ISO_STRING]
+//
+// Children of this class are expected to share the same log file format,
+// but may contain additional space-deliminated entries
 class LoggedImageListSource : public InputSource {
 public:
   LoggedImageListSource(const std::string& firstImageFilename, \
       bool isTimeSynched = true);
-  ~LoggedImageListSource();
+  virtual ~LoggedImageListSource();
 
   void initSource() throw (const std::string&);
   void initSource(const std::string& newFirstImageFilename) \
       throw (const std::string&) \
       { inputFilename = newFirstImageFilename; initSource(); };
   void stopSource();
+
   // NOTE: If this function returns a false value, then it is recommended
   //       to proceed by calling stopSource() and
   //       initSource(newFirstImageFilename)
   bool getFrame(cv::Mat& userBuf);
 
-  bool getTelem(logTelem& buf);
+  virtual bool getTelem(logTelem* buf);
 
   std::pair<int, int> getImageRange() {
     if (!alive) { firstImageID = -1; lastImageID = -1; }
@@ -149,7 +60,15 @@ public:
 
   const static std::string LOGFILE_EXTENSION; // See LoggedImageListSource.cpp for declaration
 
-private:
+protected:
+  // Seek for the line in the log file starting with the image ID = fileID + fileIDOffset
+  //
+  // Will throw exception if the seeked image ID is either smaller than the
+  // value in the next valid line inside the log file, or cannot be found
+  // in the remainder of the log file.
+  //
+  // WARNING: if an exception is thrown, the user is still responsible for
+  //          resetting the input source by calling stopSource() manually
   void seekForFileID() throw (const std::string&);
 
   std::string inputFilename;
@@ -159,7 +78,7 @@ private:
   int fileID;
   // NOTE: The numbering string in the file is formed by formatting
   //       (fileID + fileIDOffset) using numDigitsInFilename
-  int fileIDOffset; // NOTE: This is used if list does not start at 0
+  int fileIDOffset; // NOTE: This is useful if list does not start at 0
   std::string line;
   std::vector<long> timeIndicesUSEC;
   std::ifstream logFile;
@@ -168,4 +87,4 @@ private:
 
 } // namespace input
 
-#endif /* LOGGEDIMAGESOURCE_HPP_ */
+#endif /* LOGGEDIMAGELISTSOURCE_HPP_ */

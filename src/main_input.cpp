@@ -12,24 +12,21 @@ using namespace input;
 
 class CallbackClass {
 public:
-  void callback(ImageData d) {
+  void callback(ImageData* d) {
+    if (d == NULL || d->alive == NULL || !*(d->alive) || d->image == NULL) {
+      return;
+    }
     unsigned int count = 0;
     double value = 0;
     cv::MatIterator_<unsigned char> it;
-    for (it = d.image->begin<unsigned char>(); \
-    it != d.image->end<unsigned char>(); it++) {
+    for (it = d->image->begin<unsigned char>(); \
+    it != d->image->end<unsigned char>(); it++) {
       value += *it;
       count++;
     }
-    cout << "callback() - w=" << d.image->cols << " h=" << d.image->rows << \
-        " nChan=" << d.image->channels() << " Avg Value: " << \
+    cout << "callback() - w=" << d->image->cols << " h=" << d->image->rows << \
+        " nChan=" << d->image->channels() << " Avg Value: " << \
         ((count == 0) ? 0 : value/count) << endl;
-    if (d.telem != NULL) {
-      cout << "... (with telemetry packet)" << endl;
-    }
-    if (d.nav != NULL) {
-      cout << "... (with navigation packet)" << endl;
-    }
   };
 };
 
@@ -38,21 +35,17 @@ int main (int argc, char **argv) {
   ///////////////// BEGIN USER-EDITABLE SETTINGS //////////////
   // TEST_MODE VALUES:
   // 0: Stub Source (i.e. always returns black image) [DEFAULT]
+  //    Arguments: 0
   // 1: Video File Source
+  //    Arguments: 1 [isTimeSynched] [videoFile]
   // 2: Video Capture Source, logger disabled
+  //    Arguments: 2 [isTimeSynched] [videoDevice]
   // 3: Video Capture Source, logger enabled
-  // 4: Logged Image List Source
-  //    [MUST HAVE IMAGES AND LOG FILE]
-  // 5. Image List Source
-  //    [MUST HAVE IMAGES]
-  //
-  // USAGE SCENARIOS:
-  // > UAV_INPUT 0
-  // > UAV_INPUT 1 [isTimeSynched] [videoFile]
-  // > UAV_INPUT 2 [isTimeSynched] [videoDevice]
-  // > UAV_INPUT 3 [videoDeviceFPS] [videoDevice] [logLocationHeader]
-  // > UAV_INPUT 4 [isTimeSynched] [firstImageFilename]
-  // > UAV_INPUT 5 [imageListFPS] [firstImageFilename]
+  //    Arguments: 3 [videoDeviceFPS] [videoDevice] [logLocationHeader]
+  // 4: Logged Image List Source [MUST HAVE IMAGES AND LOG FILE IN SAME FOLDER]
+  //    Arguments: 4 [isTimeSynched] [firstImageFilename] [startImageID]
+  // 5. Image List Source [MUST HAVE IMAGES IN SAME FOLDER]
+  //    Arguments: 5 [imageListFPS] [firstImageFilename]
   int testMode = 0;
 
   // NOTE: isTimeSynched does nothing if source is video capture or image list
@@ -61,39 +54,37 @@ int main (int argc, char **argv) {
 
   string videoFile = "./sample.avi";
 
-#ifdef __MSVC__ /* Microsoft Visual Studio */
-  int videoDeviceType = CV_CAP_ANY;
-#else
-  int videoDeviceType = CV_CAP_V4L2;
-#endif
+  int videoDeviceType = CV_CAP_V4L2; // which is equivalent to CV_CAP_VFW in Windows
   string logLocationHeader = "./log/log"; // = filename without _#####.jpg
   double videoDeviceFPS = 15.0;
   unsigned int imageQualityPercentage = 95;
   bool deinterlaceImage = true;
+  unsigned int multipleGrabs = 1;
+  unsigned int startImageID = 0;
 
   string firstImageFilename = "./log/log_00000.jpg";
   ///////////////// END USER-EDITABLE SETTINGS ////////////////
 
   // Process command line arguments
   if (argc > 1) {
-    if (argv[1][0] == '-' && argv[1][1] == 'h') {
+    if ((argv[1][0] == '-' && argv[1][1] == 'h') ||
+        (argv[1][0] == '/' && argv[1][1] == 'h') ||
+        (argv[1][0] == '/' && argv[1][1] == '?')) {
       cout << "Sources:" << endl;
+
       cout << "0: Stub Source (i.e. always returns black image) [DEFAULT]" << endl;
+      cout << "   Usage:" << argv[0] << " 0" << endl << endl;
       cout << "1: Video File Source" << endl;
+      cout << "   Usage:" << argv[0] << " 1 [isTimeSynched] [videoFile]" << endl << endl;
       cout << "2: Video Capture Source, logger disabled" << endl;
+      cout << "   Usage:" << argv[0] << " 2 [isTimeSynched] [videoDevice]" << endl << endl;
       cout << "3: Video Capture Source, logger enabled" << endl;
-      cout << "4: Logged Image List Source" << endl;
-      cout << "   [MUST HAVE IMAGES AND LOG FILE]" << endl;
-      cout << "5. Image List Source" << endl;
-      cout << "   [MUST HAVE IMAGES]" << endl;
-      cout << endl;
-      cout << "Usage:" << endl;
-      cout << argv[0] << " 0" << endl;
-      cout << argv[0] << " 1 [isTimeSynched] [videoFile]" << endl;
-      cout << argv[0] << " 2 [isTimeSynched] [videoDeviceID]" << endl;
-      cout << argv[0] << " 3 [videoDeviceFPS] [videoDeviceID] [logLocationHeader]" << endl;
-      cout << argv[0] << " 4 [isTimeSynched] [firstImageFilename]" << endl;
-      cout << argv[0] << " 5 [imageListFPS] [firstImageFilename]" << endl;
+      cout << "   Usage:" << argv[0] << " 3 [videoDeviceFPS] [videoDevice] [logLocationHeader]" << endl << endl;
+      cout << "4: Logged Image List Source [MUST HAVE IMAGES AND LOG FILE IN SAME FOLDER]" << endl;
+      cout << "   Usage:" << argv[0] << " 4 [isTimeSynched] [firstImageFilename] [startImageID]" << endl << endl;
+      cout << "5. Image List Source [MUST HAVE IMAGES IN SAME FOLDER]" << endl;
+      cout << "   Usage:" << argv[0] << " 5 [imageListFPS] [firstImageFilename]" << endl << endl;
+
       return 0;
     } else {
       testMode = atoi(argv[1]);
@@ -153,6 +144,10 @@ int main (int argc, char **argv) {
       cout << ". logLocationHeader manually set to: " << \
           logLocationHeader << endl;
       break;
+    case 4:
+      startImageID = atoi(argv[4]);
+      cout << ". startImageID manually set to: " << \
+          startImageID << endl;
     }
   }
 
@@ -160,7 +155,6 @@ int main (int argc, char **argv) {
   InputSource* src = NULL;
   cv::Mat imgBuf;
   int key;
-  VCDriver* VC = NULL;
   int keyPressDelay = isTimeSynched ? 30 : 0;
   logTelem telemBuf;
   CallbackClass cbc;
@@ -173,12 +167,14 @@ int main (int argc, char **argv) {
       src = new VideoFileSource(videoFile, isTimeSynched);
       break;
     case 2:
-      src = new VideoDeviceSource(videoDeviceType, false);
+      src = new VideoDeviceSource(videoDeviceType, deinterlaceImage, \
+          multipleGrabs, false);
       break;
     case 3:
-      src = new VideoDeviceSource(videoDeviceType, deinterlaceImage, 1, true, \
+      src = new VideoDeviceSource(videoDeviceType, deinterlaceImage, \
+          multipleGrabs, true, \
           std::bind1st(std::mem_fun(&CallbackClass::callback), &cbc), \
-          videoDeviceFPS, imageQualityPercentage, true, logLocationHeader, VC);
+          videoDeviceFPS, imageQualityPercentage, true, logLocationHeader);
       break;
     case 4:
       src = new LoggedImageListSource(firstImageFilename, isTimeSynched);
@@ -198,7 +194,8 @@ int main (int argc, char **argv) {
     src->initSource();
     cout << ". input source initialized." << endl;
     cout << ". keypress interactions:" << endl;
-    cout << ". 'X'  : exit" << endl;
+    cout << ". 'X|Q': exit" << endl;
+    cout << ". 'R'  : reset source (if applicable)" << endl;
     cout << ". '+'  : time multiplier * 1.1" << endl;
     cout << ". '-'  : time multiplier / 1.1" << endl;
     cout << ". '#'  : manually set time multiplier (# = 0-9)" << endl;
@@ -211,7 +208,10 @@ int main (int argc, char **argv) {
       pair<int, int> range = s->getImageRange();
       cout << ". Logged image range: " << range.first << " to " << \
           range.second << endl;
-      //s->setImageID(500);
+
+      if (startImageID > 0) {
+        s->setImageID(startImageID);
+      }
     }
 
     while(1) {
@@ -224,13 +224,27 @@ int main (int argc, char **argv) {
       // Print telemetry if available
       if (src->getType() == InputSource::LOGGED_IMAGE_LIST_SOURCE) {
         LoggedImageListSource* s = (LoggedImageListSource*) src;
-	// TODO: print image ID
+        if (!s->getTelem(&telemBuf)) {
+          throw string("Unable to obtain telemetry");
+        } else {
+          cout << "Image " << telemBuf.image_ID << \
+              " @ wall-time " << to_iso_string(telemBuf.sys_time) << endl;
+        }
       }
 
       // Wait for user to press key, either to close app or to grab frame
       key = (cv::waitKey(keyPressDelay) & 0xFF);
       if (key == 'x' || key == 'X' || key == 'q' || key == 'Q') {
         break;
+      } else if (key == 'r' || key == 'R') {
+        if (src->getType() == InputSource::IMAGE_LIST_SOURCE ||
+            src->getType() == InputSource::LOGGED_IMAGE_LIST_SOURCE ||
+            src->getType() == InputSource::VIDEO_FILE_SOURCE) {
+          src->initSource(); // This function internally calls stopSource() first
+          cout << ". Source reset" << endl;
+        } else {
+          cout << ". Source cannot be reset" << endl;
+        }
       } else if (key >= '0' && key <= '9') {
         src->setTimeMultiplier(key - '0');
         cout << ". Multiplier: " << src->getTimeMultiplier() << endl;
@@ -244,10 +258,6 @@ int main (int argc, char **argv) {
     }
   } catch (const std::string& err) {
     cout << "ERROR > " << err << endl;
-  }
-
-  if (VC != NULL) {
-    delete VC;
   }
 
   if (src != NULL) {
