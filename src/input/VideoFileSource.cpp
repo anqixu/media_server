@@ -80,7 +80,8 @@ bool VideoFileSource::getFrame(cv::Mat& userBuf) {
           currVidUSEC = (long) (vid.get(CV_CAP_PROP_POS_MSEC) * 1000);
           currTime = microsec_clock::local_time();
           td = currTime - prevTime;
-          elapsedTime += td * timeMultiplier;
+          // NOTE: following expression can't be simplified due to cast in time_duration::operator*(int)
+          elapsedTime += microseconds((long) ((float) td.total_microseconds() * timeMultiplier));
           prevTime = currTime;
 
           // ... until wall time between queries is shorter than
@@ -100,7 +101,8 @@ bool VideoFileSource::getFrame(cv::Mat& userBuf) {
             // Sleep a bit to synchronize wall time with video time
             currTime = microsec_clock::local_time();
             td = currTime - prevTime;
-            elapsedTime += td * timeMultiplier;
+            // NOTE: following expression can't be simplified due to cast in time_duration::operator*(int)
+            elapsedTime += microseconds((long) ((float) td.total_microseconds() * timeMultiplier));
             prevTime = currTime;
             // NOTE: the division of timeMultiplier in the following duration
             //       calculation is needed to convert from frame-time to wall-time

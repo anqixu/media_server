@@ -159,7 +159,8 @@ bool LoggedImageListSource::getFrame(cv::Mat& userBuf) {
       // Compute elapsed time since first (not a typo) getFrame() call
       ptime currTime = microsec_clock::local_time();
       time_duration td = currTime - prevTime;
-      elapsedTime += td * timeMultiplier; // Note the += ...
+      // NOTE: following expression can't be simplified due to cast in time_duration::operator*(int)
+      elapsedTime += microseconds((long) ((float) td.total_microseconds() * timeMultiplier)); // Note the += ...
       prevTime = currTime; // (thus duration computed from first getFrame() call)
       // NOTE: elapsedTime is within the image-list-time frame, thus
       //       any updates to this variable need to consider timeMultiplier
@@ -188,7 +189,8 @@ bool LoggedImageListSource::getFrame(cv::Mat& userBuf) {
           // (difference should be insignificant, but be cautious nevertheless)
           currTime = microsec_clock::local_time();
           time_duration td = currTime - prevTime;
-          elapsedTime += td * timeMultiplier;
+          // NOTE: following expression can't be simplified due to cast in time_duration::operator*(int)
+          elapsedTime += microseconds((long) ((float) td.total_microseconds() * timeMultiplier));
           prevTime = currTime;
 
           timeGapUSEC = \

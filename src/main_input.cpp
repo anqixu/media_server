@@ -196,8 +196,8 @@ int main (int argc, char **argv) {
     cout << ". keypress interactions:" << endl;
     cout << ". 'X|Q': exit" << endl;
     cout << ". 'R'  : reset source (if applicable)" << endl;
-    cout << ". '+'  : time multiplier * 1.1" << endl;
-    cout << ". '-'  : time multiplier / 1.1" << endl;
+    cout << ". '+|=': time multiplier * 1.2" << endl;
+    cout << ". '-'  : time multiplier / 1.2" << endl;
     cout << ". '#'  : manually set time multiplier (# = 0-9)" << endl;
     cout << ". NOTE: all key presses except for 'X' will grab next frame" << endl;
     cout << flush;
@@ -214,6 +214,9 @@ int main (int argc, char **argv) {
       }
     }
 
+    ptime prevFrameTime, prevWallTime, currWallTime;
+    time_duration frame_td, wall_td;
+    bool hasPrevTime = false;
     while(1) {
       // Query and display latest frame
       if (!src->getFrame(imgBuf)) {
@@ -226,9 +229,23 @@ int main (int argc, char **argv) {
         LoggedImageListSource* s = (LoggedImageListSource*) src;
         if (!s->getTelem(&telemBuf)) {
           throw string("Unable to obtain telemetry");
-        } else {
+        } else if (!hasPrevTime) {
+          currWallTime = microsec_clock::local_time();
+          prevFrameTime = telemBuf.sys_time;
+          prevWallTime = currWallTime;
+          hasPrevTime = true;
           cout << "Image " << telemBuf.image_ID << \
-              " @ wall-time " << to_iso_string(telemBuf.sys_time) << endl;
+              " @ init-frame-time " << to_iso_string(telemBuf.sys_time) <<
+              " & init-wall-time " << to_iso_string(currWallTime) << endl;
+        } else {
+          currWallTime = microsec_clock::local_time();
+          cout << "Image " << telemBuf.image_ID << \
+              " @ frame-td " << \
+              ((float) (telemBuf.sys_time - prevFrameTime).total_microseconds()) / 1000000.f <<
+              " & wall-td " << \
+              ((float) (currWallTime - prevWallTime).total_microseconds()) / 1000000.f << endl;
+          prevFrameTime = telemBuf.sys_time;
+          prevWallTime = currWallTime;
         }
       }
 
@@ -241,6 +258,7 @@ int main (int argc, char **argv) {
             src->getType() == InputSource::LOGGED_IMAGE_LIST_SOURCE ||
             src->getType() == InputSource::VIDEO_FILE_SOURCE) {
           src->initSource(); // This function internally calls stopSource() first
+          hasPrevTime = false;
           cout << ". Source reset" << endl;
         } else {
           cout << ". Source cannot be reset" << endl;
@@ -248,11 +266,11 @@ int main (int argc, char **argv) {
       } else if (key >= '0' && key <= '9') {
         src->setTimeMultiplier(key - '0');
         cout << ". Multiplier: " << src->getTimeMultiplier() << endl;
-      } else if (key == '+') {
-        src->setTimeMultiplier(src->getTimeMultiplier()*1.1);
+      } else if (key == '+' || key == '=') {
+        src->setTimeMultiplier(src->getTimeMultiplier()*1.2);
         cout << ". Multiplier: " << src->getTimeMultiplier() << endl;
       } else if (key == '-') {
-        src->setTimeMultiplier(src->getTimeMultiplier()/1.1);
+        src->setTimeMultiplier(src->getTimeMultiplier()/1.2);
         cout << ". Multiplier: " << src->getTimeMultiplier() << endl;
       }
     }

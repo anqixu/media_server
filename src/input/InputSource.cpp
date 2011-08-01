@@ -60,7 +60,8 @@ void InputSource::setTimeMultiplier(double newMult) {
   if (alive && hasStartTime && timeMultiplier > 0) {
     ptime currTime = microsec_clock::local_time();
     time_duration td = currTime - prevTime;
-    elapsedTime += td*timeMultiplier;
+    // NOTE: following expression can't be simplified due to cast in time_duration::operator*(int)
+    elapsedTime += microseconds((long) ((float) td.total_microseconds() * timeMultiplier));
     prevTime = currTime;
   }
 
