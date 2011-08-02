@@ -12,6 +12,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <string>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/filesystem/path.hpp>
 
 using namespace boost::posix_time;
 
@@ -81,6 +82,11 @@ public:
       std::string& headerBuf, std::string& extensionBuf, \
       int& firstImageIDBuf, unsigned int& numDigitsBuf) \
       throw (const std::string&);
+
+  // Recursive directory creation
+  //
+  // From http://www.mail-archive.com/boost@lists.boost.org/msg02228.html
+  static bool createDirectories(const boost::filesystem::path& ph);
 
 protected:
   SourceType type;

@@ -1,0 +1,9 @@
+# Must be >= 0. If == 0, then time synchronization is turned off.
+# If > 0 and previously not using time synchronization, then
+# position will be reset to beginning of source (when applicable).
+float64 newTimeMultiplier
+
+---
+
+# Result after setting time multiplier (will be different from input in case of error)
+float64 resultTimeMultiplier

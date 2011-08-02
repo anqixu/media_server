@@ -6,7 +6,6 @@
 
 #include "InputSource.hpp"
 #include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
 #include <boost/lexical_cast.hpp>
 
 
@@ -76,3 +75,20 @@ void InputSource::setTimeMultiplier(double newMult) {
   // Update multiplier
   timeMultiplier = newMult;
 };
+
+
+bool InputSource::createDirectories(const boost::filesystem::path& ph) {
+  // Root, no directories to create
+  if (ph.empty()) {
+    return true;
+  }
+  bool result = createDirectories(ph.branch_path());
+  if (result && !exists(ph)) {
+    try {
+      result = result && boost::filesystem::create_directory(ph);
+    } catch (const std::exception& ex) {
+      result = false;
+    }
+  }
+  return result;
+}

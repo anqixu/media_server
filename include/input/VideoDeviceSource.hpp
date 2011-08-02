@@ -43,7 +43,7 @@ struct ImageData {
 
 class VideoDeviceSource : public InputSource {
 public:
-  // TODO: 9 ensure that startStream() does not segfault w or w/o callback during destructor
+  // TODO: LATER 0 make sure that startStream() does not segfault w or w/o executing callback during ~VideoDeviceSource() call
 
   // NOTE: If framesPerSec == 0, then system will grab as fast as possible.
   //       Also, keep in mind that the system can only grab as fast as there
@@ -150,7 +150,7 @@ public:
     callbackFn = streamMode ? cbFn : NULL;
   };
 
-  const static unsigned int MAX_JOIN_TIME_MSEC = 500;
+  const static unsigned int MAX_JOIN_TIME_MSEC = 1000;
   const static long DEVICE_FRAME_DELAY_USEC = 30000; // i.e. ~0.03 sec
   const static std::string IMAGE_EXTENSION; // See VideoDeviceSource.cpp for declaration
   const static std::string LOGFILE_EXTENSION; // See VideoDeviceSource.cpp for declaration

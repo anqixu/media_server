@@ -14,6 +14,11 @@ SET ( CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMAKE_MODULES/" )
 
 rosbuild_init()
 
+# Define Windows XP target
+IF ( MSVC )
+  ADD_DEFINITIONS ( -D_WIN32_WINNT=0x0501 -D__MSVC__ )
+ENDIF ()
+
 # Set debug mode (-g) and enable all warnings (-Wall) for GNU compilers
 IF ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX )
   SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wall -Wno-deprecated -std=c++0x" )

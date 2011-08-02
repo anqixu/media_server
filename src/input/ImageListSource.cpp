@@ -7,7 +7,6 @@
 #include "ImageListSource.hpp"
 #include <boost/thread/thread.hpp>
 #include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
 
 
 using namespace std;

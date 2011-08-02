@@ -1,0 +1,7 @@
+# 0 = start of media source, 1 = end of media source
+float64 ratio
+
+---
+
+# Returns false if media source is unseekable
+bool result

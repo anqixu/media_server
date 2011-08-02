@@ -1,0 +1,28 @@
+---
+# Returns false if media source has no more frames available and node is configured to idle
+bool isActive
+
+# Returns true if frames are being streamed; returns false if in manual poll mode (use get_frame to poll)
+bool streamMode
+
+# This value is de-coupled from 'framesPerSecond' in the case of ImageListSource
+#
+# Applicable for: ImageListSource, LoggedImageListSource, VideoFileSource
+float64 timeMultiplier
+
+# Returns the first image name for ImageListSource and LoggedImageListSource;
+# returns the video file name for VideoFileSource;
+# returns the video device name for VideoDeviceSource
+string sourceName
+
+# Applicable for: ImageListSource, LoggedImageListSource
+int32 firstImageID
+
+# Applicable for: ImageListSource, LoggedImageListSource
+int32 lastImageID
+
+# Applicable for: ImageListSource, LoggedImageListSource
+int32 currImageID
+
+# Applicable for: ImageListSource, VideoDeviceSource
+float64 framesPerSecond

@@ -7,7 +7,6 @@
 #include "VideoDeviceSource.hpp"
 #include <boost/date_time/gregorian/gregorian_types.hpp>
 #include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
 #include <boost/algorithm/string.hpp>
 #include <iostream>
 #include <cmath>
@@ -263,9 +262,18 @@ void VideoDeviceSource::startStream() {
         hasTelems = updateTelems();
         if (!isStreamActive) { break; }
 
-        // Quick-save latest frame into internal memory (without cloning, thus cannot modify contents!)
+        // Quick-save latest frame into internal memory
+        // (without cloning, thus cannot modify contents!)
+        // NOTE: For some (unsure-but-not-fatal?) reason, retrieve() prints
+        //       "Invalid SOS parameters for sequential JPEG" to cerr when using
+        //       certain (presumably cheap) USB capture devices. Thus we will
+        //       temporarily mute cerr to disable these annoying warnings.
         bufferMutex.lock();
+        streambuf* cerr_sbuf = cerr.rdbuf();
+        ostream cnull(NULL);
+        cerr.rdbuf(cnull.rdbuf()); // Re-direct cerr buffer to /dev/null
         cap.retrieve(imageBuf);
+        cerr.rdbuf(cerr_sbuf); // Restore original cerr buffer
         bufferMutex.unlock();
         if (!isStreamActive) { break; }
 
@@ -377,7 +385,7 @@ void VideoDeviceSource::setupFiles() throw (const std::string&) {
     if (headerPath.has_parent_path()) {
       parentPath = headerPath.parent_path();
       if (!fs::exists(parentPath)) {
-        if (!fs::create_directory(parentPath)) { // TODO: LATER upgrade to create_directories() after upgrading libboost (> 1.40.0)
+        if (!createDirectories(parentPath)) {
           ostringstream err;
           err << "Unable to create folder: " << parentPath.string();
           throw err.str();

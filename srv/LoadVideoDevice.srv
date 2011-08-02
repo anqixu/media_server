@@ -68,7 +68,7 @@ bool enableDeinterlace
 uint8 multipleGrabs
 
 # Frame synchronization factor
-# If framesPerSecond <= 0, then streamMode will be automatically de-activated
+# If framesPerSecond <= 0, then device will be polled as frequently as possible
 float64 framesPerSecond
 
 # Given that images are saved as JPEGs (can't be configured for now), this

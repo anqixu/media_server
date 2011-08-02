@@ -6,9 +6,7 @@
 
 #include "VideoFileSource.hpp"
 #include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
 #include <boost/thread/thread.hpp> // Needed for sleep()
-
 
 using namespace std;
 namespace fs = boost::filesystem;
