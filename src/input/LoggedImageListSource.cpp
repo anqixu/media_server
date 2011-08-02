@@ -21,7 +21,7 @@ LoggedImageListSource::LoggedImageListSource( \
     const std::string& firstImageFilename, double timeMult) : \
     InputSource(timeMult > 0 ? timeMult : 0), \
     inputFilename(firstImageFilename), \
-    numDigitsInFilename(0), fileID(0), fileIDOffset(0), line(), \
+    numDigitsInFilename(0), fileID(0), line(), \
     firstImageID(-1), lastImageID(-1) {
   type = LOGGED_IMAGE_LIST_SOURCE;
 };
@@ -38,12 +38,12 @@ void LoggedImageListSource::initSource() throw (const std::string&) {
 
   // Parse user-specified filename for header & numbering format & extension
   InputSource::parseImageFileHeader(inputFilename, fileHeader, \
-      fileExtension, fileIDOffset, numDigitsInFilename);
+      fileExtension, firstImageID, numDigitsInFilename);
 
   // Form log filename and open log file
   ostringstream logFilename;
   logFilename << fileHeader << setfill('0') << \
-      setw(numDigitsInFilename) << fileIDOffset << LOGFILE_EXTENSION;
+      setw(numDigitsInFilename) << firstImageID << LOGFILE_EXTENSION;
   if (logFile.is_open()) { logFile.close(); }
   logFile.open(logFilename.str().c_str(), ios::in);
   if (!logFile.is_open()) {
@@ -59,7 +59,6 @@ void LoggedImageListSource::initSource() throw (const std::string&) {
   ptime currTime;
   time_duration td;
   hasStartTime = false;
-  firstImageID = -1;
   lastImageID = -1;
   while (!logFile.eof()) {
     // Skip blank lines or lines with comments
@@ -96,10 +95,10 @@ void LoggedImageListSource::initSource() throw (const std::string&) {
       td = currTime - startTime;
       timeIndicesUSEC.push_back((long) td.total_microseconds());
     } else { // First entry: make sure imageID = file's image ID
-      if (currImageID != fileIDOffset) {
+      if (currImageID != firstImageID) {
         if (logFile.is_open()) { logFile.close(); }
         ostringstream err;
-        err << "Image ID in filename (" << fileIDOffset << \
+        err << "Image ID in filename (" << firstImageID << \
             ") does not correspond to first image ID in log (" << \
             currImageID << ")";
         throw err.str();
@@ -108,7 +107,6 @@ void LoggedImageListSource::initSource() throw (const std::string&) {
       startTime = from_iso_string(currTimeString);
       timeIndicesUSEC.push_back(0);
       hasStartTime = true;
-      firstImageID = currImageID;
       lastImageID = currImageID;
     }
   } // while (!logFile.eof())
@@ -138,7 +136,6 @@ void LoggedImageListSource::stopSource() {
   firstImageID = -1;
   lastImageID = -1;
   fileID = -1;
-  fileIDOffset = -1;
   line.clear();
 };
 
@@ -146,7 +143,7 @@ void LoggedImageListSource::stopSource() {
 bool LoggedImageListSource::getFrame(cv::Mat& userBuf) {
   if (timeMultiplier > 0) {
     if (!hasStartTime || fileID < 0) { // First getFrame() call
-      fileID = 0; // Recall that current image ID = fileID + fileIDOffset
+      fileID = 0; // Recall that current image ID = fileID + firstImageID
       startTime = microsec_clock::local_time();
       hasStartTime = true;
       prevTime = startTime;
@@ -207,7 +204,7 @@ bool LoggedImageListSource::getFrame(cv::Mat& userBuf) {
 
   // Increment numDigits if necessary
   unsigned int newDigitCount = \
-      (unsigned int) floor(log10((double) fileIDOffset + fileID)) + 1;
+      (unsigned int) floor(log10((double) firstImageID + fileID)) + 1;
   if (newDigitCount > numDigitsInFilename) {
     numDigitsInFilename = newDigitCount;
   }
@@ -215,7 +212,7 @@ bool LoggedImageListSource::getFrame(cv::Mat& userBuf) {
   // Load image directly into caller's buffer, and then update image dimensions
   ostringstream imageFilename;
   imageFilename << fileHeader << setfill('0') << \
-      setw(numDigitsInFilename) << fileIDOffset + fileID << fileExtension;
+      setw(numDigitsInFilename) << firstImageID + fileID << fileExtension;
   userBuf = cv::imread(imageFilename.str()); // Assume format is BGR
   if (userBuf.empty()) { // Image failed to load
     return false;
@@ -273,12 +270,12 @@ void LoggedImageListSource::setImageID(int desiredID) throw (const std::string&)
     throw err.str();
   }
 
-  if (desiredID == fileIDOffset + fileID) { // Already at current position
+  if (desiredID == firstImageID + fileID) { // Already at current position
     return;
   }
 
   // Set desired file ID and re-seek for telemetry entry
-  int newFileID = desiredID - fileIDOffset;
+  int newFileID = desiredID - firstImageID;
   // Rewind file if necessary
   if (newFileID < fileID) {
     logFile.clear();
@@ -301,10 +298,19 @@ bool LoggedImageListSource::seek(double ratio) {
   if (alive) {
     result = true;
     int newFileID = (int) round((lastImageID - firstImageID)*ratio);
-    if (newFileID + fileIDOffset < firstImageID || \
-        newFileID + fileIDOffset > lastImageID) {
+    if (newFileID < 0 || \
+        newFileID > lastImageID - firstImageID) {
       newFileID = 0;
     }
+
+    // Rewind file if necessary
+    if (newFileID < fileID) {
+      logFile.clear();
+      logFile.seekg(0, ios::beg);
+    }
+    fileID = newFileID;
+    seekForFileID();
+
     if (timeMultiplier > 0) {
       prevTime = microsec_clock::local_time();
       elapsedTime = microseconds(timeIndicesUSEC[fileID]);
@@ -324,14 +330,14 @@ void LoggedImageListSource::seekForFileID() throw (const std::string&) {
   if (line.length() > 0 && line[0] != '%') {
     istringstream lineStream(line);
     lineStream >> currImageID;
-    if (currImageID == fileIDOffset + fileID) {
+    if (currImageID == firstImageID + fileID) {
       return;
-    } else if (currImageID > fileIDOffset + fileID) {
+    } else if (currImageID > firstImageID + fileID) {
       stopSource();
       ostringstream err;
       err << "Image ID in log (" << currImageID << \
           ") is larger than expected image ID (" << \
-          fileIDOffset + fileID << ")";
+          firstImageID + fileID << ")";
       throw err.str();
     }
   }
@@ -348,20 +354,20 @@ void LoggedImageListSource::seekForFileID() throw (const std::string&) {
 
     istringstream lineStream(line);
     lineStream >> currImageID;
-    if (currImageID == fileIDOffset + fileID) {
+    if (currImageID == firstImageID + fileID) {
       return;
-    } else if (currImageID > fileIDOffset + fileID) {
+    } else if (currImageID > firstImageID + fileID) {
       ostringstream err;
       err << "Image ID in log (" << currImageID << \
           ") is larger than expected image ID (" << \
-          fileIDOffset + fileID << ")";
+          firstImageID + fileID << ")";
       throw err.str();
     }
   }
 
   // If execution arrives here then throw error
   ostringstream err;
-  err << "Could not find image ID (" << fileIDOffset + fileID << \
+  err << "Could not find image ID (" << firstImageID + fileID << \
         ") in log file.";
   throw err.str();
 };

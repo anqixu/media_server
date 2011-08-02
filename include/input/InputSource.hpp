@@ -72,6 +72,7 @@ public:
   double getAspectRatio() { return (double) width / height; };
   bool isAlive() { return alive; };
   double getTimeMultiplier() { return timeMultiplier; };
+  // NOTE: Source will be reset to initial position when toggling time synchronization
   void setTimeMultiplier(double newMult);
   SourceType getType() { return type; };
 

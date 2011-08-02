@@ -63,12 +63,12 @@ public:
   bool seek(double ratio);
 
   void setImageID(int desiredID) throw (const std::string&);
-  int getImageID() { return fileIDOffset + fileID; };
+  int getImageID() { return alive ? firstImageID + fileID : -1; };
 
   const static std::string LOGFILE_EXTENSION; // See LoggedImageListSource.cpp for declaration
 
 protected:
-  // Seek for the line in the log file starting with the image ID = fileID + fileIDOffset
+  // Seek for the line in the log file starting with the image ID = fileID + firstImageID
   //
   // Will throw exception if the seeked image ID is either smaller than the
   // value in the next valid line inside the log file, or cannot be found
@@ -84,8 +84,7 @@ protected:
   unsigned int numDigitsInFilename;
   int fileID;
   // NOTE: The numbering string in the file is formed by formatting
-  //       (fileID + fileIDOffset) using numDigitsInFilename
-  int fileIDOffset; // NOTE: This is useful if list does not start at 0
+  //       (fileID + firstImageID) using numDigitsInFilename
   std::string line;
   std::vector<long> timeIndicesUSEC;
   std::ifstream logFile;

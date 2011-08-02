@@ -56,6 +56,8 @@ void InputSource::parseImageFileHeader(const string& firstImageFilename, \
 
 
 void InputSource::setTimeMultiplier(double newMult) {
+  if (newMult < 0) { newMult = 0; }
+
   // Update elapsed run-time till current instant using previous multiplier
   if (alive && hasStartTime && timeMultiplier > 0) {
     ptime currTime = microsec_clock::local_time();
@@ -65,12 +67,12 @@ void InputSource::setTimeMultiplier(double newMult) {
     prevTime = currTime;
   }
 
-  // Reset synchronization times when disabling time synchronization
-  if (newMult == 0) {
+  // Reset synchronization times when disabling/enabling time synchronization
+  if (newMult == 0 || (newMult > 0 && timeMultiplier == 0)) {
     hasStartTime = false;
     elapsedTime = seconds(0);
   }
 
   // Update multiplier
-  timeMultiplier = (newMult > 0) ? newMult : 0;
+  timeMultiplier = newMult;
 };
