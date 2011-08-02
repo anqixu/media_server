@@ -18,8 +18,9 @@ const string LoggedImageListSource::LOGFILE_EXTENSION = ".log";
 
 
 LoggedImageListSource::LoggedImageListSource( \
-    const std::string& firstImageFilename, bool isTimeSynched) : \
-    InputSource(isTimeSynched ? 1 : 0), inputFilename(firstImageFilename), \
+    const std::string& firstImageFilename, double timeMult) : \
+    InputSource(timeMult > 0 ? timeMult : 0), \
+    inputFilename(firstImageFilename), \
     numDigitsInFilename(0), fileID(0), fileIDOffset(0), line(), \
     firstImageID(-1), lastImageID(-1) {
   type = LOGGED_IMAGE_LIST_SOURCE;
@@ -132,7 +133,7 @@ void LoggedImageListSource::stopSource() {
   }
 
   alive = false;
-  timeMultiplier = (timeMultiplier > 0) ? 1 : 0;
+  if (timeMultiplier < 0) { timeMultiplier = 0; }
   hasStartTime = false;
   firstImageID = -1;
   lastImageID = -1;
@@ -291,6 +292,27 @@ void LoggedImageListSource::setImageID(int desiredID) throw (const std::string&)
   startTime = microsec_clock::local_time();
   prevTime = startTime;
   elapsedTime = microseconds(timeIndicesUSEC[fileID]);
+};
+
+
+bool LoggedImageListSource::seek(double ratio) {
+  ratio = std::min(std::max(ratio, 0.0), 1.0);
+  bool result = false;
+  if (alive) {
+    result = true;
+    int newFileID = (int) round((lastImageID - firstImageID)*ratio);
+    if (newFileID + fileIDOffset < firstImageID || \
+        newFileID + fileIDOffset > lastImageID) {
+      newFileID = 0;
+    }
+    if (timeMultiplier > 0) {
+      prevTime = microsec_clock::local_time();
+      elapsedTime = microseconds(timeIndicesUSEC[fileID]);
+      hasStartTime = true;
+      startTime = prevTime - elapsedTime;
+    }
+  }
+  return result;
 };
 
 

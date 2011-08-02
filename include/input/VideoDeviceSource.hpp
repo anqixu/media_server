@@ -43,7 +43,7 @@ struct ImageData {
 
 class VideoDeviceSource : public InputSource {
 public:
-  // TODO: 9 ensure that runPoller() does not segfault w or w/o callback during destructor
+  // TODO: 9 ensure that startStream() does not segfault w or w/o callback during destructor
 
   // NOTE: If framesPerSec == 0, then system will grab as fast as possible.
   //       Also, keep in mind that the system can only grab as fast as there
@@ -52,49 +52,49 @@ public:
   //       may be smaller than this suggested value.
   //
   // device = index + driver_type, where:
-  // - if device == 0, then the first video capture source in /dev/video# will be selected
+  // - if device == 0, then the first video capture source in /dev/video# will be selected (in Linux)
   //
   // - index is a number between 0 to 99 indicating the system ID of the video capture source
   //
   // - driver_type is defined in highgui_c.h as:
-  // CV_CAP_ANY      =0,     // autodetect
+  //   CV_CAP_ANY      =0,     // autodetect
   //
-  // CV_CAP_MIL      =100,   // MIL proprietary drivers
+  //   CV_CAP_MIL      =100,   // MIL proprietary drivers
   //
-  // CV_CAP_VFW      =200,   // platform native
-  // CV_CAP_V4L      =200,
-  // CV_CAP_V4L2     =200,
+  //   CV_CAP_VFW      =200,   // platform native
+  //   CV_CAP_V4L      =200,
+  //   CV_CAP_V4L2     =200,
   //
-  // CV_CAP_FIREWARE =300,   // IEEE 1394 drivers
-  // CV_CAP_FIREWIRE =300,
-  // CV_CAP_IEEE1394 =300,
-  // CV_CAP_DC1394   =300,
-  // CV_CAP_CMU1394  =300,
+  //   CV_CAP_FIREWARE =300,   // IEEE 1394 drivers
+  //   CV_CAP_FIREWIRE =300,
+  //   CV_CAP_IEEE1394 =300,
+  //   CV_CAP_DC1394   =300,
+  //   CV_CAP_CMU1394  =300,
   //
-  // CV_CAP_STEREO   =400,   // TYZX proprietary drivers
-  // CV_CAP_TYZX     =400,
-  // CV_TYZX_LEFT    =400,
-  // CV_TYZX_RIGHT   =401,
-  // CV_TYZX_COLOR   =402,
-  // CV_TYZX_Z       =403,
+  //   CV_CAP_STEREO   =400,   // TYZX proprietary drivers
+  //   CV_CAP_TYZX     =400,
+  //   CV_TYZX_LEFT    =400,
+  //   CV_TYZX_RIGHT   =401,
+  //   CV_TYZX_COLOR   =402,
+  //   CV_TYZX_Z       =403,
   //
-  // CV_CAP_QT       =500,   // QuickTime
+  //   CV_CAP_QT       =500,   // QuickTime
   //
-  // CV_CAP_UNICAP   =600,   // Unicap drivers
+  //   CV_CAP_UNICAP   =600,   // Unicap drivers
   //
-  // CV_CAP_DSHOW    =700,   // DirectShow (via videoInput)
+  //   CV_CAP_DSHOW    =700,   // DirectShow (via videoInput)
   //
-  // CV_CAP_PVAPI    =800   // PvAPI, Prosilica GigE SDK
+  //   CV_CAP_PVAPI    =800   // PvAPI, Prosilica GigE SDK
   //
   // NOTE: Setting multipleGrabs > 1 allows the user to manually specify
   //       number of grab()s that are performed during each getFrame().
   //       This is used to flush the internal camera buffers (if present)
   //       of out-dated previous frames.
   //
-  // NOTE: options below 'poll' are only relevant if poll == true
+  // NOTE: options below 'stream' are only relevant if stream == true
   //
-  // if log is enabled, then the polled frames will be saved as image files.
-  // WARNING: this logging feature is only activated when poll == true
+  // if log is enabled, then the stream-polled frames will be saved as image files.
+  // WARNING: this logging feature is only activated when stream == true
   //          AND log == true; this design choice avoids polluting getFrame()
   //          with logging-related overhead
   //
@@ -104,7 +104,7 @@ public:
   //          during the execution of the callback; if the flag turns false,
   //          then the callback should terminate ASAP.
   VideoDeviceSource(int device = CV_CAP_ANY, bool enableDeinterlace = false, \
-      unsigned int multipleGrabs = 1, bool poll = false, \
+      unsigned int multipleGrabs = 1, bool stream = false, \
       boost::function<void (ImageData* d)> cbFn = NULL, \
       double framesPerSec = 0, \
       unsigned int imageQualityPercent = DEFAULT_IMAGE_QUALITY_PERCENT, \
@@ -115,7 +115,7 @@ public:
 
   void initSource() throw (const std::string&);
   virtual void initSource(int newDevice, bool enableDeinterlace = false, \
-      unsigned int multipleGrabs = 1, bool poll = false, \
+      unsigned int multipleGrabs = 1, bool stream = false, \
       boost::function<void (ImageData* d)> cbFn = NULL, \
       double framesPerSec = 0, \
       unsigned int imageQualityPercent = DEFAULT_IMAGE_QUALITY_PERCENT, \
@@ -125,13 +125,13 @@ public:
     videoDeviceID = newDevice;
     deinterlace = enableDeinterlace;
     multigrab = std::max(multipleGrabs, (unsigned int) 1);
-    pollMode = poll;
-    callbackFn = poll ? cbFn : NULL;
-    frameDelayUSEC = (framesPerSec > 0 && poll) ? \
+    streamMode = stream;
+    callbackFn = stream ? cbFn : NULL;
+    frameDelayUSEC = (framesPerSec > 0 && stream) ? \
         (long) (1000000.0/framesPerSec) : 0;
-    imgQuality = poll ? std::min(std::max((int) imageQualityPercent, 0), 100) : 0;
-    logMode = log && poll;
-    fileHeader = poll ? filepathHeader : "";
+    imgQuality = stream ? std::min(std::max((int) imageQualityPercent, 0), 100) : 0;
+    logMode = log && stream;
+    fileHeader = stream ? filepathHeader : "";
     initSource();
   };
   void stopSource();
@@ -147,7 +147,7 @@ public:
    */
   void updateCallbackFn(
       boost::function<void (ImageData* d)> cbFn = NULL) {
-    callbackFn = pollMode ? cbFn : NULL;
+    callbackFn = streamMode ? cbFn : NULL;
   };
 
   const static unsigned int MAX_JOIN_TIME_MSEC = 500;
@@ -160,17 +160,17 @@ public:
 
 
 protected:
-  // Main function for poller thread
-  void runPoller();
+  // Main function for stream thread
+  void startStream();
 
-  // Wrapper function for runPoller()
-  static void runPollerWrapper(VideoDeviceSource* me) { me->runPoller(); };
+  // Wrapper function for startStream()
+  static void startStreamWrapper(VideoDeviceSource* me) { me->startStream(); };
 
   // Overload the following functions to implement a child class
-  // NOTE: these functions are only used in poll mode
+  // NOTE: these functions are only used in stream mode
   virtual void triggerCallbackFn() {
     if (callbackFn != NULL) {
-      ImageData d(&imageBuf, &isPollerActive);
+      ImageData d(&imageBuf, &isStreamActive);
       callbackFn(&d);
     }
   };
@@ -185,14 +185,19 @@ protected:
   // Validate file names and folder structures for logging purposes
   void setupFiles() throw (const std::string&);
 
+#ifdef HAS_EXIV2
+  void writeEXIFData(const std::string image_filename, \
+      const std::string log_string) throw (const std::string&);
+#endif
+
   int videoDeviceID;
   cv::VideoCapture cap;
 
   bool logMode;
 
-  boost::thread poller;
-  bool pollMode;
-  bool isPollerActive;
+  boost::thread streamer;
+  bool streamMode; // This flag supercedes timeMultiplier, which is useless for VideoDeviceSource and its children
+  bool isStreamActive;
   boost::function<void (ImageData* d)> callbackFn;
 
   boost::mutex bufferMutex;

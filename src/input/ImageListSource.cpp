@@ -6,16 +6,19 @@
 
 #include "ImageListSource.hpp"
 #include <boost/thread/thread.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
 
 
 using namespace std;
 using namespace input;
+namespace fs = boost::filesystem;
 
 
 ImageListSource::ImageListSource(const std::string& firstImage, \
     double FPS) : InputSource((FPS <= 0) ? 0 : 1), inputFilename(firstImage), \
     framesPerSec((FPS > 0) ? FPS : 0), \
-    fileID(0), firstFileID(0), numDigitsInFilename(0) {
+    fileID(0), firstFileID(0), lastFileID(0), numDigitsInFilename(0) {
   type = IMAGE_LIST_SOURCE;
 };
 
@@ -33,6 +36,8 @@ void ImageListSource::initSource() throw (const std::string&) {
   InputSource::parseImageFileHeader(inputFilename, fileHeader, \
       fileExtension, firstFileID, numDigitsInFilename);
   fileID = firstFileID;
+  lastFileID = ImageListSource::scanForLastFileID(fileHeader,
+      fileExtension, firstFileID, numDigitsInFilename);
 
   // Validate FPS (and change time synchronization mode if necessary)
   if (framesPerSec <= 0) {
@@ -120,4 +125,48 @@ bool ImageListSource::getFrame(cv::Mat& userBuf) {
   height = userBuf.cols;
 
   return true;
+};
+
+
+int ImageListSource::scanForLastFileID(const std::string& header, \
+    const std::string& extension, int firstID, int numDigits) {
+  int scanID = firstID;
+  int nDigits = numDigits, newDigitCount;
+
+  while (1) {
+    newDigitCount = (int) floor(log10((double) scanID)) + 1;
+    if (newDigitCount > nDigits) {
+      nDigits = newDigitCount;
+    }
+
+    ostringstream imageFilename;
+    imageFilename << header << setfill('0') << \
+        setw(nDigits) << scanID << extension;
+
+    if (!fs::exists(fs::path(imageFilename.str()))) {
+      break;
+    }
+
+    scanID++;
+  }
+
+  return scanID;
+};
+
+
+bool ImageListSource::seek(double ratio) {
+  ratio = std::min(std::max(ratio, 0.0), 1.0);
+  bool result = false;
+  if (alive) {
+    result = true;
+    fileID = firstFileID + (int) round((lastFileID - firstFileID)*ratio);
+    if (fileID < firstFileID || fileID > lastFileID) { fileID = firstFileID; }
+    if (timeMultiplier > 0) {
+      prevTime = microsec_clock::local_time();
+      elapsedTime = microseconds((fileID - firstFileID) * 1000000.0 / framesPerSec);
+      hasStartTime = true;
+      startTime = prevTime - elapsedTime;
+    }
+  }
+  return result;
 };

@@ -205,7 +205,7 @@ int main (int argc, char **argv) {
     // Print image range if logged image list source
     if (src->getType() == InputSource::LOGGED_IMAGE_LIST_SOURCE) {
       LoggedImageListSource* s = (LoggedImageListSource*) src;
-      pair<int, int> range = s->getImageRange();
+      pair<int, int> range = s->getIndexRange();
       cout << ". Logged image range: " << range.first << " to " << \
           range.second << endl;
 

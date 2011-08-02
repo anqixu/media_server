@@ -1,0 +1,21 @@
+# Whether to poll images through GetFrame.srv or stream automatically
+# TIP: streamMode can be disabled along with a non-zero FPS in order to
+#      manually sample from a time-synchronized sequences
+bool streamMode
+
+# Absolute or relative filepath to the first image
+# format: [folder]/[header]_[image_ID].[extension]
+string firstImageFilename
+
+# Frame synchronization factor
+# If framesPerSecond <= 0, then streamMode will be automatically de-activated
+float64 framesPerSecond
+
+# Specify whether the node should repeat the image list indefinitely, or stop after
+# depleting through the image list once
+bool repeatMode
+
+---
+
+# Returns empty string if successful
+string error

@@ -5,6 +5,7 @@
 
 
 #include "VideoDeviceSource.hpp"
+#include <boost/date_time/gregorian/gregorian_types.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/algorithm/string.hpp>
@@ -14,6 +15,10 @@
 #include <vector>
 #include <limits>
 #define FLOAT_PRECISION (std::numeric_limits< float >::digits10 + 1)
+
+#ifdef HAS_EXIV2
+#include <exiv2/image.hpp>
+#endif
 
 
 using namespace std;
@@ -27,18 +32,19 @@ const string VideoDeviceSource::DEFAULT_FILEPATH_HEADER = "./vidlog/image";
 
 
 VideoDeviceSource::VideoDeviceSource(int device, bool enableDeinterlace, \
-    unsigned int multipleGrabs, bool poll, \
+    unsigned int multipleGrabs, bool stream, \
     boost::function<void (ImageData* d)> cbFn, \
     double framesPerSec, unsigned int imageQualityPercent, bool log, \
     const std::string& filepathHeader) \
     throw (const std::string&) : InputSource(1), videoDeviceID(device), cap(), \
-    logMode(log && poll), poller(), pollMode(poll), isPollerActive(false), \
-    callbackFn(poll ? cbFn : NULL), bufferMutex(), \
-    fileHeader(poll ? filepathHeader : ""), \
+    logMode(log && stream), streamer(), streamMode(stream), \
+    isStreamActive(false), \
+    callbackFn(stream ? cbFn : NULL), bufferMutex(), \
+    fileHeader(stream ? filepathHeader : ""), \
     imageIDDigits(DEFAULT_IMAGE_ID_DIGITS), \
     imageID(0), \
-    frameDelayUSEC((poll && framesPerSec > 0) ? (long) (1000000.0/framesPerSec) : 0), \
-    imgQuality(poll ? std::min(std::max((int) imageQualityPercent, 0), 100) : 0), \
+    frameDelayUSEC((stream && framesPerSec > 0) ? (long) (1000000.0/framesPerSec) : 0), \
+    imgQuality(stream ? std::min(std::max((int) imageQualityPercent, 0), 100) : 0), \
     deinterlace(enableDeinterlace), \
     multigrab(std::max(multipleGrabs, (unsigned int) 1)) {
   type = VIDEO_DEVICE_SOURCE;
@@ -76,17 +82,17 @@ void VideoDeviceSource::initSource() throw (const std::string&) {
     setupFiles();
   }
 
-  // Start poller thread and grab first image into buffer
-  if (pollMode) {
+  // Start stream thread and grab first image into buffer
+  if (streamMode) {
     if (!cap.grab()) {
       throw string("Unable to grab frame from device");
     }
     bufferMutex.lock();
     cap.retrieve(imageBuf);
     bufferMutex.unlock();
-    isPollerActive = false;
-    poller = boost::thread(boost::bind( \
-        &VideoDeviceSource::runPollerWrapper, this));
+    isStreamActive = false;
+    streamer = boost::thread(boost::bind( \
+        &VideoDeviceSource::startStreamWrapper, this));
   }
 };
 
@@ -96,10 +102,10 @@ void VideoDeviceSource::stopSource() {
     // Remove callbacks
     updateCallbackFn();
 
-    // Close poller thread
-    if (isPollerActive) {
-      isPollerActive = false;
-      poller.timed_join(boost::posix_time::milliseconds( \
+    // Close streamer thread
+    if (isStreamActive) {
+      isStreamActive = false;
+      streamer.timed_join(boost::posix_time::milliseconds( \
             VideoDeviceSource::MAX_JOIN_TIME_MSEC));
     }
 
@@ -121,7 +127,7 @@ bool VideoDeviceSource::getFrame(cv::Mat& userBuf) {
   // NOTE: Video device is always time-synched with timeMultiplier == 1 assumed
   cv::Mat localBuf;
 
-  if (isPollerActive) {
+  if (isStreamActive) {
     // Return internal image buffer, which SHOULD contain latest frame
     bufferMutex.lock();
     imageBuf.copyTo(userBuf);
@@ -207,14 +213,17 @@ bool VideoDeviceSource::getFrame(cv::Mat& userBuf) {
 };
 
 
-void VideoDeviceSource::runPoller() {
+void VideoDeviceSource::startStream() {
   unsigned int newDigitCount;
   ofstream logFile;
-  ostringstream tempStr;
   ptime prevTimeTic, currTimeToc;
   time_duration td;
   long timeGapUSEC;
   cv::Mat localBuf;
+
+#ifdef HAS_EXIV2
+  ptime initPTime(boost::gregorian::date(1970, 1, 1));
+#endif
 
   // Setup image saving parameters
   vector<int> imwriteParams = vector<int> ();
@@ -224,6 +233,7 @@ void VideoDeviceSource::runPoller() {
   try {
     // Setup log file
     if (logMode) {
+      ostringstream tempStr;
       tempStr << fileHeader << "_" << setfill('0') << \
           setw(imageIDDigits) << imageID << LOGFILE_EXTENSION;
       logFile.open(tempStr.str().c_str(), ios::out | ios::app);
@@ -236,9 +246,9 @@ void VideoDeviceSource::runPoller() {
     }
 
     // Main loop
-    isPollerActive = true;
+    isStreamActive = true;
     bool hasTelems = false;
-    while (isPollerActive) {
+    while (isStreamActive) {
       // Tick
       if (frameDelayUSEC > 0) {
         prevTimeTic = microsec_clock::local_time();
@@ -247,43 +257,58 @@ void VideoDeviceSource::runPoller() {
       // Capture latest frame
       // NOTE: grab() will block until new frame is available
       if (cap.grab()) {
-        if (!isPollerActive) { break; }
+        if (!isStreamActive) { break; }
 
         // Obtain latest telemetry
         hasTelems = updateTelems();
-        if (!isPollerActive) { break; }
+        if (!isStreamActive) { break; }
 
         // Quick-save latest frame into internal memory (without cloning, thus cannot modify contents!)
         bufferMutex.lock();
         cap.retrieve(imageBuf);
         bufferMutex.unlock();
-        if (!isPollerActive) { break; }
+        if (!isStreamActive) { break; }
 
         // Trigger user-specified callback
         triggerCallbackFn();
-        if (!isPollerActive) { break; }
+        if (!isStreamActive) { break; }
 
         // Deinterlace image if required
         if (deinterlace) {
           cv::resize(imageBuf, localBuf, cv::Size(), 1, 0.5, cv::INTER_NEAREST);
           cv::resize(localBuf, imageBuf, cv::Size(), 1, 2, cv::INTER_LINEAR);
         }
-        if (!isPollerActive) { break; }
+        if (!isStreamActive) { break; }
 
-        if (logMode && isPollerActive) {
+        if (logMode && isStreamActive) {
           // Construct image filename
           // if (imageID < 0) { imageID = 0; } // Not needed since imageID is unsigned int
-          tempStr.clear();
-          tempStr.str("");
+          ostringstream tempStr;
           tempStr << fileHeader << "_" << setfill('0') << \
               setw(imageIDDigits) << imageID << IMAGE_EXTENSION;
 
           // Save latest frame as image file
-  #ifdef DISABLE_SAVE_IMAGES
+#ifdef DISABLE_SAVE_IMAGES
           cout << "IMWRITE: " << tempStr.str() << endl;
-  #else
+#else
           cv::imwrite(tempStr.str(), imageBuf, imwriteParams);
-  #endif
+#endif
+
+#ifdef HAS_EXIV2
+          {
+            // Log stamp time (in fractional seconds format) of image message
+            time_duration td = microsec_clock::local_time() - initPTime;
+            std::ostringstream oss;
+            oss << "charset=Ascii " << std::setiosflags(std::ios::fixed) << \
+              std::setprecision(9) << \
+              ((double) td.total_microseconds()) / 1000000.0;
+            try {
+              writeEXIFData(tempStr.str(), oss.str());
+            } catch (const std::string& err) {
+              cerr << "ERROR > " << err << endl;
+            }
+          }
+#endif
 
           // Save latest telemetry into log file
           if (!logFile.is_open()) {
@@ -302,7 +327,7 @@ void VideoDeviceSource::runPoller() {
           if (newDigitCount > imageIDDigits) {
             imageIDDigits = newDigitCount;
           }
-        } // if (logMode && isPollerActive)
+        } // if (logMode && isStreamActive)
       } else { // Grab failed, so terminate thread
         throw string("Could not grab frame from device");
         break;
@@ -334,7 +359,7 @@ void VideoDeviceSource::runPoller() {
     logFile.close();
   }
 
-  isPollerActive = false;
+  isStreamActive = false;
 };
 
 
@@ -445,3 +470,46 @@ void VideoDeviceSource::writeHeaderToFile(ofstream& logFile) {
       "% 02. Sys Time" << endl << \
       "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" << endl;
 };
+
+
+#ifdef HAS_EXIV2
+// Open image and write text
+//
+// Since EXIF is only supported by JPEG and TIFF, this function will return false if the filename
+// has an invalid extension
+//
+// NOTE: Code heavily based on http://www.exiv2.org/doc/exifcomment_8cpp-example.html
+void VideoDeviceSource::writeEXIFData( \
+    const std::string image_filename, \
+    const std::string log_string) throw (const std::string&) {
+  std::string extension = "";
+  size_t extension_pos = image_filename.rfind('.');
+  if (extension_pos != std::string::npos && extension_pos < image_filename.length() - 1) {
+    extension = image_filename.substr(extension_pos+1);
+    std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+  }
+  if (extension.compare("jpg") != 0 && extension.compare("jpeg") != 0 && \
+      extension.compare("tif") != 0 && extension.compare("tiff") != 0) {
+    ostringstream err;
+    err << "Cannot write EXIF data to non-JPEG/non-TIFF file: " << image_filename;
+    throw err.str();
+  }
+
+  try {
+    Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(image_filename);
+    if (image.get() == 0) {
+      ostringstream err;
+      err << "Exiv could not open image: " << image_filename;
+      throw err.str();
+    }
+    image->readMetadata();
+    Exiv2::ExifData &exifData = image->exifData();
+    exifData["Exif.Photo.UserComment"] = log_string.c_str();
+    image->writeMetadata();
+  } catch (Exiv2::AnyError& e) {
+    ostringstream err;
+    err << "Caught Exiv2 exception: " << e;
+    throw err.str();
+  }
+};
+#endif

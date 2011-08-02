@@ -16,7 +16,7 @@ using namespace input;
 
 
 VideoFileSource::VideoFileSource(const std::string& videoFile, \
-    bool isTimeSynched) : InputSource(isTimeSynched ? 1 : 0), \
+    double timeMult) : InputSource(timeMult > 0 ? timeMult : 0), \
     sourceFile(videoFile), vid() {
   type = VIDEO_FILE_SOURCE;
 };
@@ -56,7 +56,7 @@ void VideoFileSource::stopSource() {
   // Update status
   alive = false;
   hasStartTime = false;
-  timeMultiplier = (timeMultiplier > 0) ? 1 : 0;
+  if (timeMultiplier < 0) { timeMultiplier = 0; }
 };
 
 
@@ -151,4 +151,20 @@ bool VideoFileSource::getFrame(cv::Mat& userBuf) {
   }
 
   return false;
+};
+
+
+bool VideoFileSource::seek(double ratio) {
+  ratio = std::min(std::max(ratio, 0.0), 1.0);
+  bool result = false;
+  if (vid.isOpened()) {
+    result = vid.set(CV_CAP_PROP_POS_AVI_RATIO, ratio);
+    if (result && timeMultiplier > 0) {
+      prevTime = microsec_clock::local_time();
+      elapsedTime = milliseconds(vid.get(CV_CAP_PROP_POS_MSEC));
+      hasStartTime = true;
+      startTime = prevTime - elapsedTime;
+    }
+  }
+  return result;
 };

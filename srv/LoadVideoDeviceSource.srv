@@ -1,0 +1,95 @@
+# Whether to poll images through GetFrame.srv or stream automatically
+bool streamMode
+
+# Video device ID, device = index + driver_type, where:
+# - if device == 0, then the first video capture source in /dev/video# will be selected (in Linux)
+#
+# - index is a number between 0 to 99 indicating the system ID of the video capture source
+#
+# - driver_type is defined in highgui_c.h as:
+#   CV_CAP_ANY      =0,     // autodetect
+#
+#   CV_CAP_MIL      =100,   // MIL proprietary drivers
+#
+#   CV_CAP_VFW      =200,   // platform native
+#   CV_CAP_V4L      =200,
+#   CV_CAP_V4L2     =200,
+#
+#   CV_CAP_FIREWARE =300,   // IEEE 1394 drivers
+#   CV_CAP_FIREWIRE =300,
+#   CV_CAP_IEEE1394 =300,
+#   CV_CAP_DC1394   =300,
+#   CV_CAP_CMU1394  =300,
+#
+#   CV_CAP_STEREO   =400,   // TYZX proprietary drivers
+#   CV_CAP_TYZX     =400,
+#   CV_TYZX_LEFT    =400,
+#   CV_TYZX_RIGHT   =401,
+#   CV_TYZX_COLOR   =402,
+#   CV_TYZX_Z       =403,
+#
+#   CV_CAP_QT       =500,   // QuickTime
+#
+#   CV_CAP_UNICAP   =600,   // Unicap drivers
+#
+#   CV_CAP_DSHOW    =700,   // DirectShow (via videoInput)
+#
+#   CV_CAP_PVAPI    =800   // PvAPI, Prosilica GigE SDK
+int32 device
+int32 CV_CAP_ANY      = 0
+int32 CV_CAP_MIL      = 100
+int32 CV_CAP_VFW      = 200
+int32 CV_CAP_V4L      = 200
+int32 CV_CAP_V4L2     = 200
+int32 CV_CAP_FIREWARE = 300
+int32 CV_CAP_FIREWIRE = 300
+int32 CV_CAP_IEEE1394 = 300
+int32 CV_CAP_DC1394   = 300
+int32 CV_CAP_CMU1394  = 300
+int32 CV_CAP_STEREO   = 400
+int32 CV_CAP_TYZX     = 400
+int32 CV_TYZX_LEFT    = 400
+int32 CV_TYZX_RIGHT   = 401
+int32 CV_TYZX_COLOR   = 402
+int32 CV_TYZX_Z       = 403
+int32 CV_CAP_QT       = 500
+int32 CV_CAP_UNICAP   = 600
+int32 CV_CA_DSHOW     = 700
+int32 CV_CAP_PVAPI    = 800
+
+# Deinterlace interlaced video streams (e.g. from cheap USB cameras)
+# using (fast) linear interpolation
+bool enableDeinterlace
+
+# In manual-poll mode, multipleGrabs is used to flush internal (hardware) frame buffers
+# in order to obtain up-to-date frames after a long interval of inactivity
+#
+# This value should be determined empirically, and is specific to each video device
+uint8 multipleGrabs
+
+# Frame synchronization factor
+# If framesPerSecond <= 0, then streamMode will be automatically de-activated
+float64 framesPerSecond
+
+# Given that images are saved as JPEGs (can't be configured for now), this
+# specifies the JPEG image compression percentage
+#
+# Only relevant when streamMode == true
+uint8 imageQualityPercent
+uint8 DEFAULT_IMAGE_QUALITY_PERCENT = 95
+
+# Automatically log images into a list of images, along with an external log flatfile containing the timestamps
+#
+# Only relevant when streamMode == true
+bool logImages
+
+# Absolute or relative filepath header for the logged images
+# image filename format: [logPathHeader]_[image_ID].jpg
+#
+# Only relevant when streamMode == true and logImages == true
+string logPathHeader
+
+---
+
+# Returns empty string if successful
+string error

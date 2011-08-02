@@ -55,6 +55,18 @@ public:
   //       longer than wall time between consecutive getFrame() calls
   virtual bool getFrame(cv::Mat& userBuf) = 0;
 
+  virtual std::pair<int, int> getIndexRange() {
+    return std::make_pair(-1, -1);
+  };
+
+  // For seekable (and thus bounded) input sources, ratio = 0 means
+  // seek to beginning and ratio = 1 means seek to end
+  //
+  // NOTE: For time-synchronized sources, calling this function will begin
+  //       "ticking" the clock immediately (as opposed to waiting for getFrame()
+  //       to be called later)
+  virtual bool seek(double ratio) { return false; };
+
   int getWidth() { return width; };
   int getHeight() { return height; };
   double getAspectRatio() { return (double) width / height; };

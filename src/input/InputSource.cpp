@@ -65,6 +65,12 @@ void InputSource::setTimeMultiplier(double newMult) {
     prevTime = currTime;
   }
 
+  // Reset synchronization times when disabling time synchronization
+  if (newMult == 0) {
+    hasStartTime = false;
+    elapsedTime = seconds(0);
+  }
+
   // Update multiplier
   timeMultiplier = (newMult > 0) ? newMult : 0;
 };

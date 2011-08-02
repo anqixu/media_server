@@ -1,0 +1,18 @@
+# Whether to poll images through GetFrame.srv or stream automatically
+bool streamMode
+
+# Absolute or relative filepath to the video file
+string videoFilename
+
+# Frame synchronization flag
+# If timeMultiplier <= 0, then streamMode will be automatically de-activated
+float64 timeMultiplier
+
+# Specify whether the node should repeat the video file indefinitely, or stop after
+# playing through the video once
+bool repeatMode
+
+---
+
+# Returns empty string if successful
+string error

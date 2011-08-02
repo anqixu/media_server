@@ -1,0 +1,23 @@
+# Whether to poll images through GetFrame.srv or stream automatically
+bool streamMode
+
+# Absolute or relative filepath to the first image
+# format: [folder]/[header]_[image_ID].[extension]
+#
+# WARNING: A log file with specific format (see codebase)
+#          must be in the same folder as the images
+# format: [folder]/[first_image_filename].log
+string firstImageFilename
+
+# Frame synchronization flag
+# If timeMultiplier <= 0, then streamMode will be automatically de-activated
+float64 timeMultiplier
+
+# Specify whether the node should repeat the image list indefinitely, or stop after
+# depleting through the image list once
+bool repeatMode
+
+---
+
+# Returns empty string if successful
+string error

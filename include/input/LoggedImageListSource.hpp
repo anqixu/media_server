@@ -35,13 +35,17 @@ struct logTelem {
 class LoggedImageListSource : public InputSource {
 public:
   LoggedImageListSource(const std::string& firstImageFilename, \
-      bool isTimeSynched = true);
+      double timeMult = 1.0);
   virtual ~LoggedImageListSource();
 
   void initSource() throw (const std::string&);
-  void initSource(const std::string& newFirstImageFilename) \
-      throw (const std::string&) \
-      { inputFilename = newFirstImageFilename; initSource(); };
+  void initSource(const std::string& newFirstImageFilename,
+      double newTimeMultiplier = 1.0) \
+      throw (const std::string&) {
+    inputFilename = newFirstImageFilename;
+    timeMultiplier = (newTimeMultiplier > 0) ? newTimeMultiplier : 0;
+    initSource();
+  };
   void stopSource();
 
   // NOTE: If this function returns a false value, then it is recommended
@@ -51,10 +55,13 @@ public:
 
   virtual bool getTelem(logTelem* buf);
 
-  std::pair<int, int> getImageRange() {
+  std::pair<int, int> getIndexRange() {
     if (!alive) { firstImageID = -1; lastImageID = -1; }
     return std::make_pair(firstImageID, lastImageID);
   };
+
+  bool seek(double ratio);
+
   void setImageID(int desiredID) throw (const std::string&);
   int getImageID() { return fileIDOffset + fileID; };
 

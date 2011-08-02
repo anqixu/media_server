@@ -31,17 +31,27 @@ public:
   //       to proceed by calling stopSource() and initSource(newFirstImage)
   bool getFrame(cv::Mat& userBuf);
 
+  std::pair<int, int> getIndexRange() {
+    if (!alive) { firstFileID = -1; lastFileID = -1; }
+    return std::make_pair(firstFileID, lastFileID);
+  };
+
+  bool seek(double ratio);
+
   const static double DEFAULT_FPS = 15.;
 
 private:
   bool parseFileHeader(const std::string& imageFilename) \
       throw (const std::string&);
 
+  static int scanForLastFileID(const std::string& header, \
+      const std::string& extension, int firstID, int numDigits);
+
   std::string inputFilename;
   std::string fileHeader; // File path excluding # & extension
   std::string fileExtension;
   double framesPerSec;
-  int fileID, firstFileID;
+  int fileID, firstFileID, lastFileID;
   unsigned int numDigitsInFilename;
 };
 

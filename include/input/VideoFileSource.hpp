@@ -15,14 +15,26 @@ namespace input {
 
 class VideoFileSource : public InputSource {
 public:
-  VideoFileSource(const std::string& videoFile, bool isTimeSynched);
+  VideoFileSource(const std::string& videoFile, double timeMult = 1.0);
   ~VideoFileSource();
 
   void initSource() throw (const std::string&);
-  void initSource(const std::string& newVideoFile) throw (const std::string&) \
-      { sourceFile = newVideoFile; initSource(); };
+  void initSource(const std::string& newVideoFile, \
+      double newTimeMultiplier = 1.0) throw (const std::string&) {
+    sourceFile = newVideoFile;
+    timeMultiplier = (newTimeMultiplier > 0) ? newTimeMultiplier : 0;
+    initSource();
+  };
   void stopSource();
   bool getFrame(cv::Mat& userBuf);
+
+  virtual std::pair<int, int> getIndexRange() {
+    return (vid.isOpened() ? \
+        std::make_pair(0, (int) (vid.get(CV_CAP_PROP_FRAME_COUNT)) - 1) : \
+        std::make_pair(-1, -1));
+  };
+
+  bool seek(double ratio);
 
   unsigned int getFPS() {
     return (vid.isOpened() ? (int) vid.get(CV_CAP_PROP_FPS) : 0);
