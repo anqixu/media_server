@@ -23,6 +23,7 @@ public:
   bool getFrame(cv::Mat& userBuf);
   void setWidth(unsigned int newImgWidth);
   void setHeight(unsigned int newImgHeight);
+  std::string getName() { return "stub"; };
 
   const static unsigned int DEFAULT_IMG_WIDTH = 640;
   const static unsigned int DEFAULT_IMG_HEIGHT = 480;

@@ -54,7 +54,7 @@ void InputSource::parseImageFileHeader(const string& firstImageFilename, \
 };
 
 
-void InputSource::setTimeMultiplier(double newMult) {
+double InputSource::setTimeMultiplier(double newMult) {
   if (newMult < 0) { newMult = 0; }
 
   // Update elapsed run-time till current instant using previous multiplier
@@ -74,6 +74,7 @@ void InputSource::setTimeMultiplier(double newMult) {
 
   // Update multiplier
   timeMultiplier = newMult;
+  return timeMultiplier;
 };
 
 

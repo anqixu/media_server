@@ -36,8 +36,8 @@ public:
 
   bool seek(double ratio);
 
-  unsigned int getFPS() {
-    return (vid.isOpened() ? (int) vid.get(CV_CAP_PROP_FPS) : 0);
+  double getFPS() {
+    return (vid.isOpened() ? vid.get(CV_CAP_PROP_FPS) : 0.0);
   };
   unsigned int getNumFrames() {
     return (vid.isOpened() ? (int) vid.get(CV_CAP_PROP_FRAME_COUNT) : 0);
@@ -45,6 +45,9 @@ public:
   double getCVFileProperty(int propID) {
     return (vid.isOpened() ? vid.get(propID) : 0);
   };
+
+  std::string getVideoFilename() { return sourceFile; };
+  std::string getName() { return sourceFile; };
 
 private:
   // Disable copy constructor and copy assignment operator

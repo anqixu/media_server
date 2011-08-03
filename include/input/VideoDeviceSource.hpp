@@ -150,6 +150,13 @@ public:
     callbackFn = streamMode ? cbFn : NULL;
   };
 
+  int getVideoDeviceID() { return videoDeviceID; };
+  std::string getName() { return boost::lexical_cast<std::string>(videoDeviceID); };
+
+  double getFPS() { return alive ? 1000000.0 / frameDelayUSEC : 0; };
+
+  bool isStreaming() { return isStreamActive; };
+
   const static unsigned int MAX_JOIN_TIME_MSEC = 1000;
   const static long DEVICE_FRAME_DELAY_USEC = 30000; // i.e. ~0.03 sec
   const static std::string IMAGE_EXTENSION; // See VideoDeviceSource.cpp for declaration

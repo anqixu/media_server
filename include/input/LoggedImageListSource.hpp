@@ -65,6 +65,9 @@ public:
   void setImageID(int desiredID) throw (const std::string&);
   int getImageID() { return alive ? firstImageID + fileID : -1; };
 
+  std::string getFirstImageFilename() { return inputFilename; };
+  std::string getName() { return inputFilename; };
+
   const static std::string LOGFILE_EXTENSION; // See LoggedImageListSource.cpp for declaration
 
 protected:

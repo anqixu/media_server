@@ -36,7 +36,14 @@ public:
     return std::make_pair(firstFileID, lastFileID);
   };
 
+  int getImageID() { return alive ? fileID : -1; };
+
   bool seek(double ratio);
+
+  std::string getFirstImageFilename() { return inputFilename; };
+  std::string getName() { return inputFilename; };
+
+  double getFPS() { return alive ? framesPerSec : 0; };
 
   const static double DEFAULT_FPS = 15.;
 

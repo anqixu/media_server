@@ -15,14 +15,14 @@ float64 timeMultiplier
 # returns the video device name for VideoDeviceSource
 string sourceName
 
-# Applicable for: ImageListSource, LoggedImageListSource
+# Applicable for: ImageListSource, LoggedImageListSource, VideoFileSource
 int32 firstImageID
 
-# Applicable for: ImageListSource, LoggedImageListSource
+# Applicable for: ImageListSource, LoggedImageListSource, VideoFileSource
 int32 lastImageID
 
-# Applicable for: ImageListSource, LoggedImageListSource
+# Applicable for: ImageListSource, LoggedImageListSource, VideoFileSource
 int32 currImageID
 
-# Applicable for: ImageListSource, VideoDeviceSource
+# Applicable for: ImageListSource, , VideoFileSource, VideoDeviceSource
 float64 framesPerSecond

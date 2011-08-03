@@ -60,6 +60,10 @@ public:
     return std::make_pair(-1, -1);
   };
 
+  virtual double getFPS() { return 0.0; };
+
+  virtual std::string getName() = 0;
+
   // For seekable (and thus bounded) input sources, ratio = 0 means
   // seek to beginning and ratio = 1 means seek to end
   //
@@ -74,7 +78,7 @@ public:
   bool isAlive() { return alive; };
   double getTimeMultiplier() { return timeMultiplier; };
   // NOTE: Source will be reset to initial position when toggling time synchronization
-  void setTimeMultiplier(double newMult);
+  virtual double setTimeMultiplier(double newMult);
   SourceType getType() { return type; };
 
   // This function is used by *ImageListSource child classes
