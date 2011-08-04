@@ -28,8 +28,8 @@ public:
       const std::string& transport, \
       bool idle) : \
       imageSeqID(0), source(NULL), transportString(transport), \
-      idleEnabled(idle), streamMode(false), \
-      repeatMode(false) {
+      idleEnabled(idle), inIdleMode(true), \
+      streamMode(false), repeatMode(false) {
     // Setup image topic
     std::string image_topic = nh.resolveName("image");
     image_transport::ImageTransport it(nh);
@@ -65,6 +65,7 @@ public:
       // REMINDER: getFrame() will block if time-synchronized
       if (source != NULL && source->isAlive() && streamMode && \
           (source->getType() != InputSource::VIDEO_DEVICE_SOURCE)) {
+        inIdleMode = false;
         pushNextFrame();
       } else {
         sleepRate.sleep();
@@ -175,26 +176,37 @@ public:
       media_server::GetMediaStatus::Response& response) {
     response.isActive = (source != NULL && source->isAlive());
     response.streamMode = streamMode;
-    response.timeMultiplier = (source != NULL) ? source->getTimeMultiplier() : 0;
-    std::pair<int, int> imageRange = source->getIndexRange();
-    response.firstImageID = imageRange.first;
-    response.lastImageID = imageRange.second;
-    response.framesPerSecond = source->getFPS();
-    response.sourceName = source->getName();
+    response.currImageID = -1;
+    if (response.isActive) {
+      response.timeMultiplier = source->getTimeMultiplier();
+      std::pair<int, int> imageRange = source->getIndexRange();
+      response.firstImageID = imageRange.first;
+      response.lastImageID = imageRange.second;
+      response.framesPerSecond = source->getFPS();
+      response.sourceName = source->getName();
 
-    response.currImageID = 0;
-    if (source != NULL) {
-      switch (source->getType()) {
-      case InputSource::IMAGE_LIST_SOURCE:
-        response.currImageID = ((ImageListSource*) source)->getImageID();
-        break;
-      case InputSource::LOGGED_IMAGE_LIST_SOURCE:
-        response.currImageID = ((LoggedImageListSource*) source)->getImageID();
-        break;
-      case InputSource::VIDEO_FILE_SOURCE:
-        response.currImageID = (int) ((VideoFileSource*) source)->getCVFileProperty(CV_CAP_PROP_POS_FRAMES);
-        break;
+      if (source != NULL) {
+        switch (source->getType()) {
+        case InputSource::IMAGE_LIST_SOURCE:
+          response.currImageID = ((ImageListSource*) source)->getImageID();
+          break;
+        case InputSource::LOGGED_IMAGE_LIST_SOURCE:
+          response.currImageID = ((LoggedImageListSource*) source)->getImageID();
+          break;
+        case InputSource::VIDEO_FILE_SOURCE:
+          response.currImageID = (int) ((VideoFileSource*) source)->getCVFileProperty(CV_CAP_PROP_POS_FRAMES);
+          break;
+        default:
+          response.currImageID = -1;
+          break;
+        }
       }
+    } else {
+      response.timeMultiplier = 0;
+      response.firstImageID = -1;
+      response.lastImageID = -1;
+      response.framesPerSecond = 0;
+      response.sourceName = "undefined";
     }
 
     return true;
@@ -224,7 +236,14 @@ public:
       media_server::SetTimeMultiplier::Response& response) {
     response.resultTimeMultiplier = 0;
     if (source != NULL && source->isAlive()) {
+      double prevTimeMultiplier = source->getTimeMultiplier();
       response.resultTimeMultiplier = source->setTimeMultiplier(request.newTimeMultiplier);
+      if (prevTimeMultiplier == 0 && response.resultTimeMultiplier > 0 && \
+          source->getType() != InputSource::VIDEO_DEVICE_SOURCE) {
+        streamMode = true;
+      } else if (prevTimeMultiplier > 0 && response.resultTimeMultiplier == 0) {
+        streamMode = false;
+      }
       ROS_INFO_STREAM("MEDIA_SERVER: succeeded setting time multiplier to " << \
             response.resultTimeMultiplier);
     } else {
@@ -338,7 +357,10 @@ private:
           ROS_INFO("MEDIA_SERVER: source has no more frames; server terminating");
           terminateMediaServer();
         } else {
-          ROS_INFO("MEDIA_SERVER: source has no more frames; server is now in idle mode");
+          if (!inIdleMode) {
+            ROS_INFO("MEDIA_SERVER: source has no more frames; server is now in idle mode");
+            inIdleMode = true;
+          }
           result = true;
         }
       }
@@ -411,6 +433,7 @@ private:
   boost::mutex source_mutex;
   string transportString;
   bool idleEnabled; // If false, node will terminate after failing to fetch frame
+  bool inIdleMode;
   bool streamMode;
   bool repeatMode;
 };

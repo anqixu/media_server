@@ -41,7 +41,7 @@ void ImageListSource::initSource() throw (const std::string&) {
   // Validate FPS (and change time synchronization mode if necessary)
   if (framesPerSec <= 0) {
     timeMultiplier = 0;
-    framesPerSec = 0;
+    framesPerSec = DEFAULT_FPS;
   } else {
     timeMultiplier = 1;
   }
@@ -55,6 +55,7 @@ void ImageListSource::initSource() throw (const std::string&) {
 void ImageListSource::stopSource() {
   alive = false;
   timeMultiplier = (timeMultiplier > 0) ? 1 : 0;
+  framesPerSec = 0;
 };
 
 

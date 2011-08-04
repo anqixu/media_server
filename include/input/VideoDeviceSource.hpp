@@ -151,7 +151,7 @@ public:
   };
 
   int getVideoDeviceID() { return videoDeviceID; };
-  std::string getName() { return boost::lexical_cast<std::string>(videoDeviceID); };
+  std::string getName() { return "VIDEO_DEVICE_" + boost::lexical_cast<std::string>(videoDeviceID); };
 
   double getFPS() { return alive ? 1000000.0 / frameDelayUSEC : 0; };
 

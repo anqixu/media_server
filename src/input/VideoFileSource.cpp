@@ -114,6 +114,7 @@ bool VideoFileSource::getFrame(cv::Mat& userBuf) {
           }
         }
       } else { // First request: return next frame and record start time
+        vid.set(CV_CAP_PROP_POS_AVI_RATIO, 0); // Reset to beginning of file
         if (vid.grab()) {
           startTime = microsec_clock::local_time();
           hasStartTime = true;

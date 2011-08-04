@@ -3,8 +3,76 @@
 
      media_server
 
+
+     WHAT IS IT?
+     An OpenCV-based ROS node for serving images from different sources, including:
+     - sequential list of images (format: [HEADER]_[IMAGE_ID].[EXTENSION])
+     - sequential list of images with time-synchronization log file (log file format: [HEADER]_[FIRST_IMAGE_ID].log)
+     - video file
+     - video device (must be supported by OpenCV)
+
+
+     KEY FEATURES
+     - either have frames streamed on a ROS topic automatically (while time-synchronized),
+     - or poll individual frames manually using a ROS service call
+     - in poll mode, frames can either be polled while time-synchronized or on a frame-per-frame basis (not applicable for VideoDeviceSource)
+     - dynamically adjust the time synchronization multiplier using a ROS service call
+     - seek to specific position-ratio (for seekable media sources only)
+     - set the media source to repeat (not applicable for VideoDeviceSource)
+     - create a logged sequence of images while streaming from a video device source
+
+
+     BUILD INSTRUCTIONS
+     Dependencies: libboost-date-time-dev, libboost-filesystem-dev, libboost-system-dev, libboost-thread-dev
+     Optional dependencies: libexiv2-dev
+
+     If you need to grab frames from a video file or device, you must re-build ROS's OpenCV
+     library, as the default vision_opencv/opencv2 build does not include V4L drivers by design.
+     It is strongly recommended that you re-build the library in the default folder,
+     which means that your account must have write access to that folder.
+     Here are the steps to re-building OpenCV library for ROS (diamondback) on Ubuntu 10.04:
+
+     1. in a terminal, run:
+        > roscd vision_opencv
+     2. if you don't have write access but has sudo access, then run the following:
+        > sudo chown [YOUR_USER_NAME] -R opencv2
+     3. > cd opencv2
+     4. open Makefile using your favorate editor, e.g.:
+        > gedit Makefile
+     5. near the top of the file, change the following lines:
+        "-D WITH_FFMPEG=OFF \" into "-D WITH_FFMPEG=ON \"
+        "-D WITH_V4L=OFF \" into "-D WITH_V4L=ON \"
+     6. ensure that the package 'ffmpeg' is installed from apt / Synaptic
+     7. after saving the Makefile, back in terminal, run:
+        > make
+        (this may take a while, since it will fetch the latest revision of OpenCV from the svn repository and then build it)
+
+     Assuming that you have re-built ROS's OpenCV correctly, you can now build
+     media_server by running (in a terminal):
+     > rosmake media_server
+
+     If you have the package 'libexiv2-dev' installed, then the JPEG images saved
+     by VideoDeviceSource will automatically store a time-stamp (i.e. floating-point second)
+     as a EXIF comment in each image.
+
+
+     TEST INSTRUCTIONS
+     Here are brief instructions for viewing the sample video file using media_server
+     and image_view. On 4 separate terminals, run:
+
+     TERM_1 > roscore
+     TERM_2 > rosrun image_view image_view image:=/source/image_raw
+     TERM_3 > rosrun media_server media_server image:=/source/image_raw
+              (optional parameters: ['raw'|'theora'|'compressed'] [ROS_NODE_IDLE_AFTER_SOURCE_IS_DONE])
+     TERM_4 > rosservice call load_video_file true [PATH_TO_media_server]/input/sample.avi 1 true
+              (the parameters for LoadVideoFile.srv are: [STREAM_MODE] [VIDEO_FILE] [TIME_MULTIPLIER] [REPEAT])
+
+     Info on other available services can be found by running:
+     > rosservice list
+     > rosservice type [SERVICE_NAME] | rossrv show
+
   </description>
-  <author>MiMiC</author>
+  <author>Anqi Xu</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/media_server</url>
