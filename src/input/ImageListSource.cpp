@@ -54,8 +54,10 @@ void ImageListSource::initSource() throw (const std::string&) {
 
 void ImageListSource::stopSource() {
   alive = false;
-  timeMultiplier = (timeMultiplier > 0) ? 1 : 0;
-  framesPerSec = 0;
+  // NOTE: don't reset timeMultiplier or framesPerSec because they are user settings!
+  // timeMultiplier = (timeMultiplier > 0) ? 1 : 0;
+  // framesPerSec = 0;
+  if (timeMultiplier < 0) { timeMultiplier = 0; }
 };
 
 

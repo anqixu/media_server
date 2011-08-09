@@ -25,9 +25,8 @@ using namespace input;
 class MediaServer {
 public:
   MediaServer(ros::NodeHandle& nh, \
-      const std::string& transport, \
       bool idle) : \
-      imageSeqID(0), source(NULL), transportString(transport), \
+      imageSeqID(0), source(NULL), \
       idleEnabled(idle), inIdleMode(true), \
       streamMode(false), repeatMode(false) {
     // Setup image topic
@@ -53,8 +52,8 @@ public:
     pollFrameSrv = nh.advertiseService("poll_frame", \
         &MediaServer::pollFrameCB, this);
 
-    ROS_INFO("MEDIA_SERVER: initiated idle server on image topic %s", \
-        image_topic.c_str());
+    ROS_INFO_STREAM("MEDIA_SERVER: initiated idle server on image topic " <<
+        image_topic << " with idle mode " << (idleEnabled ? "ENABLED" : "DISABLED"));
   };
 
   void spin() {
@@ -63,7 +62,7 @@ public:
     while (ros::ok()) {
       // REMINDER: streamed video device uses callback fn
       // REMINDER: getFrame() will block if time-synchronized
-      if (source != NULL && source->isAlive() && streamMode && \
+      if (!inIdleMode && source != NULL && source->isAlive() && streamMode && \
           (source->getType() != InputSource::VIDEO_DEVICE_SOURCE)) {
         inIdleMode = false;
         pushNextFrame();
@@ -219,6 +218,7 @@ public:
     if (source != NULL && source->isAlive()) {
       if (source->seek(request.ratio)) {
         response.result = true;
+        inIdleMode = false;
         ROS_INFO_STREAM("MEDIA_SERVER: succeeded seeking to " << \
             request.ratio*100 << " %");
       } else {
@@ -283,6 +283,7 @@ public:
     source = newSource;
     try {
       source->initSource();
+      inIdleMode = false;
     } catch (const std::string& err) {
       // Release source access
       source_mutex.unlock();
@@ -431,7 +432,6 @@ private:
   unsigned int imageSeqID;
   InputSource* source;
   boost::mutex source_mutex;
-  string transportString;
   bool idleEnabled; // If false, node will terminate after failing to fetch frame
   bool inIdleMode;
   bool streamMode;
@@ -444,12 +444,11 @@ int main(int argc, char** argv) {
   ros::NodeHandle nh;
   if (nh.resolveName("image") == "/image") {
     ROS_WARN_STREAM("Usage: " << argv[0] << \
-        " image:=<image topic> [transport] [idleAfterSourceDone]");
+        " image:=<image topic> [idleAfterSourceDone]");
   }
 
-  MediaServer mediaServer(nh, \
-      (argc > 1) ? argv[1] : "raw", \
-      (argc > 2) ? argv[2][0] != '0' : false);
+  bool idleAfterSourceDone = (argc > 1) ? argv[1][0] != '0' : false;
+  MediaServer mediaServer(nh, idleAfterSourceDone);
   mediaServer.spin();
 
   return 0;
