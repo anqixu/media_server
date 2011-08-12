@@ -35,7 +35,7 @@ SET ( LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib )
 #rosbuild_genmsg()
 
 #uncomment if you have defined services
-ROSBUILD_GENSRV()
+rosbuild_gensrv()
 
 # Define header locations
 FILE ( GLOB INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/include/*" )
