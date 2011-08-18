@@ -16,7 +16,7 @@
 #include "media_server/GetMediaStatus.h"
 #include "media_server/SeekIndex.h"
 #include "media_server/SetTimeMultiplier.h"
-
+// TODO: 1 debug why if we can't load video device; or loads video file that's not there, ROS node crashes and service call does not return
 
 using namespace std;
 using namespace input;
