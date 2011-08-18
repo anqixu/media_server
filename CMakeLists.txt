@@ -21,8 +21,8 @@ ENDIF ()
 
 # Set debug mode (-g) and enable all warnings (-Wall) for GNU compilers
 IF ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX )
-  SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wall -Wno-deprecated -std=c++0x" )
-  SET ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wno-deprecated -std=gnu++0x" )
+  SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wall -Wno-deprecated" )
+  SET ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wno-deprecated" )
 ENDIF ()
 
 #set the default path for built executables to the "bin" directory
