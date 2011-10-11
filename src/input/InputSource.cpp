@@ -8,7 +8,6 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/lexical_cast.hpp>
 
-
 using namespace std;
 namespace fs = boost::filesystem;
 using namespace input;
@@ -22,7 +21,7 @@ void InputSource::parseImageFileHeader(const string& firstImageFilename, \
   try {
     // Obtain absolute path and file extension
     fs::path filepath = fs::system_complete(fs::path(firstImageFilename));
-    extensionBuf = filepath.extension();
+    extensionBuf = filepath.extension().string();
 
     // Determine filepath header location by skipping extension & numbers
     headerBuf = filepath.string();

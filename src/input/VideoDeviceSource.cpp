@@ -411,13 +411,13 @@ void VideoDeviceSource::setupFiles() throw (const std::string&) {
       // Check for flatfile
       if (fs::is_regular_file(dirIt->status())) {
         // Check for image file extension
-        if (boost::iequals(dirIt->path().extension(), IMAGE_EXTENSION)) {
-          tempFileString = dirIt->path().leaf();
+        if (boost::iequals(dirIt->path().extension().string(), IMAGE_EXTENSION)) {
+          tempFileString = dirIt->path().leaf().string();
 
           // Find the smallest imageID that does not exist already
-          if (boost::iequals(headerPath.leaf(), \
-              tempFileString.substr(0, headerPath.leaf().length()))) {
-            tempBeginPos = headerPath.leaf().length() + 1; // 1 = "_" delimiter
+          if (boost::iequals(headerPath.leaf().string(),		\
+			     tempFileString.substr(0, headerPath.leaf().string().length()))) {
+            tempBeginPos = headerPath.leaf().string().length() + 1; // 1 = "_" delimiter
             tempSize = tempFileString.length() - tempBeginPos - \
                 IMAGE_EXTENSION.length();
             scannedID = atoi(tempFileString.substr(tempBeginPos, tempSize).c_str());

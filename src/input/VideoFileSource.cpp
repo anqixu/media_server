@@ -30,7 +30,7 @@ void VideoFileSource::initSource() throw (const std::string&) {
   stopSource();
 
   // Attempt to open new source
-  fs::path sourceFilepath = fs::complete(fs::path(sourceFile));
+  fs::path sourceFilepath = fs::system_complete(fs::path(sourceFile));
   if (!vid.open(sourceFilepath.string())) {
     ostringstream err;
 	err << "Could not find or load video file: " << sourceFilepath.string();
