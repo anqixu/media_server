@@ -45,7 +45,7 @@ public:
 
   double getFPS() { return alive ? framesPerSec : 0; };
 
-  const static double DEFAULT_FPS = 15.;
+  constexpr static double DEFAULT_FPS = 15.;
 
 private:
   bool parseFileHeader(const std::string& imageFilename) \
