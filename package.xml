@@ -1,9 +1,8 @@
+<?xml version="1.0"?>
 <package>
-  <description brief="media_server">
-
-     media_server
-
-
+  <name>media_server</name>
+  <version>0.0.1</version>
+  <description>
      WHAT IS IT?
      An OpenCV-based ROS node for serving images from different sources, including:
      - sequential list of images (format: [HEADER]_[IMAGE_ID].[EXTENSION])
@@ -70,16 +69,26 @@
      Info on other available services can be found by running:
      > rosservice list
      > rosservice type [SERVICE_NAME] | rossrv show
-
   </description>
-  <author>Anqi Xu</author>
+  <maintainer email="anqixu@cim.mcgill.ca">Anqi Xu</maintainer>
   <license>BSD</license>
-  <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/media_server</url>
-  <depend package="roscpp"/>
-  <depend package="std_srvs"/>
-  <depend package="std_msgs"/>
-  <depend package="sensor_msgs"/>
-  <depend package="image_transport"/>
-  <depend package="cv_bridge"/>
+  <author email="anqixu@cim.mcgill.ca">Anqi Xu</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>roscpp</build_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>std_srvs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>image_transport</build_depend>
+  <build_depend>cv_bridge</build_depend>
+  
+  <run_depend>roscpp</run_depend>
+  <run_depend>message_runtime</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>std_srvs</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>image_transport</run_depend>
+  <run_depend>cv_bridge</run_depend>
 </package>
