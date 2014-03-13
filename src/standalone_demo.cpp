@@ -1,9 +1,9 @@
 #include <iostream>
-#include "StubSource.hpp"
-#include "VideoFileSource.hpp"
-#include "VideoDeviceSource.hpp"
-#include "LoggedImageListSource.hpp"
-#include "ImageListSource.hpp"
+#include "media_server/StubSource.hpp"
+#include "media_server/VideoFileSource.hpp"
+#include "media_server/VideoDeviceSource.hpp"
+#include "media_server/LoggedImageListSource.hpp"
+#include "media_server/ImageListSource.hpp"
 
 
 using namespace std;

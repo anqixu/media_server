@@ -4,7 +4,7 @@
  */
 
 
-#include "VideoDeviceSource.hpp"
+#include "media_server/VideoDeviceSource.hpp"
 #include <boost/date_time/gregorian/gregorian_types.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/algorithm/string.hpp>

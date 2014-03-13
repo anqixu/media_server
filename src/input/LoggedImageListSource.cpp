@@ -4,7 +4,7 @@
  */
 
 
-#include "LoggedImageListSource.hpp"
+#include "media_server/LoggedImageListSource.hpp"
 #include <boost/algorithm/string.hpp>
 #include <boost/thread/thread.hpp>
 #include <iostream>

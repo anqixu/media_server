@@ -8,7 +8,7 @@
 #define IMAGELISTSOURCE_HPP_
 
 
-#include "InputSource.hpp"
+#include "media_server/InputSource.hpp"
 
 
 namespace input {

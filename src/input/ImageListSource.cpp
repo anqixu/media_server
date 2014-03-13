@@ -4,7 +4,7 @@
  */
 
 
-#include "ImageListSource.hpp"
+#include "media_server/ImageListSource.hpp"
 #include <boost/thread/thread.hpp>
 #include <boost/filesystem/operations.hpp>
 

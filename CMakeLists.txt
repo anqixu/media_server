@@ -68,7 +68,7 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
+  INCLUDE_DIRS include
 #  LIBRARIES
   CATKIN_DEPENDS roscpp std_msgs std_srvs sensor_msgs image_transport cv_bridge message_runtime
 #  DEPENDS system_lib
@@ -80,7 +80,6 @@ catkin_package(
 
 include_directories(
   include
-  include/input
   ${catkin_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
   ${OPENCV_INCLUDE_DIR}
@@ -91,12 +90,9 @@ link_directories(
   ${OpenCV_LIB_DIR}
 )
 
-# Define header locations
-FILE ( GLOB INCLUDE_DIRS "${CMAKE_CURRENT_LIST_DIR}/include/*" )
-
 # Define source and header files
 FILE ( GLOB INPUT_SOURCES "${CMAKE_CURRENT_LIST_DIR}/src/input/*.c*" )
-FILE ( GLOB INPUT_HEADERS "${CMAKE_CURRENT_LIST_DIR}/include/input/*.h*" )
+FILE ( GLOB INPUT_HEADERS "${CMAKE_CURRENT_LIST_DIR}/include/media_server/*.h*" )
 
 
 # Build projects
@@ -130,11 +126,11 @@ install(TARGETS ${PROJECT_NAME}_lib standalone_demo ${PROJECT_NAME}
   )
 
 ## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h"
+  PATTERN ".svn" EXCLUDE
+)
 
 #############
 ## Testing ##

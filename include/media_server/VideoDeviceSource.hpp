@@ -18,7 +18,7 @@
 //#define DISABLE_SAVE_IMAGES
 
 
-#include "InputSource.hpp"
+#include "media_server/InputSource.hpp"
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/function.hpp>

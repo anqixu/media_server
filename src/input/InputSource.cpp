@@ -4,7 +4,7 @@
  */
 
 
-#include "InputSource.hpp"
+#include "media_server/InputSource.hpp"
 #include <boost/filesystem/operations.hpp>
 #include <boost/lexical_cast.hpp>
 

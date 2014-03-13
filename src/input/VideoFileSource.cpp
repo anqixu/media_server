@@ -4,7 +4,7 @@
  */
 
 
-#include "VideoFileSource.hpp"
+#include "media_server/VideoFileSource.hpp"
 #include <boost/filesystem/operations.hpp>
 #include <boost/thread/thread.hpp> // Needed for sleep()
 

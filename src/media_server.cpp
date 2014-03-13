@@ -4,11 +4,11 @@
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/image_encodings.h>
-#include "input/StubSource.hpp"
-#include "input/ImageListSource.hpp"
-#include "input/LoggedImageListSource.hpp"
-#include "input/VideoFileSource.hpp"
-#include "input/VideoDeviceSource.hpp"
+#include "media_server/StubSource.hpp"
+#include "media_server/ImageListSource.hpp"
+#include "media_server/LoggedImageListSource.hpp"
+#include "media_server/VideoFileSource.hpp"
+#include "media_server/VideoDeviceSource.hpp"
 #include "media_server/LoadImageList.h"
 #include "media_server/LoadLoggedImageList.h"
 #include "media_server/LoadVideoFile.h"

@@ -4,7 +4,7 @@
  */
 
 
-#include "StubSource.hpp"
+#include "media_server/StubSource.hpp"
 
 
 using namespace std;
