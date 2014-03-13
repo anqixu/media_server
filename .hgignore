@@ -1,0 +1,17 @@
+syntax: regexp
+\.project$
+\.cproject$
+\.pydevproject$
+CMakeFiles
+msg_gen
+srv_gen
+CMakeCache.txt$
+cmake_install
+\.pyc$
+/lisp/
+calibrationdata.tar.gz$
+/bin/.*
+^CPackConfig.cmake$
+^CPackSourceConfig.cmake$
+doxygen.cfg$
+^docs/
