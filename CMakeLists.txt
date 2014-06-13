@@ -16,7 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 # Load Boost
 set(Boost_USE_MULTITHREADED ON)
-find_package(Boost REQUIRED COMPONENTS system-mt thread-mt date_time-mt filesystem-mt)
+find_package(Boost REQUIRED COMPONENTS system thread date_time filesystem)
 
 # Load OpenCV
 find_package(OpenCV REQUIRED COMPONENTS core imgproc highgui)
