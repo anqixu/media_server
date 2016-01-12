@@ -36,6 +36,9 @@ public:
 
   bool seek(double ratio);
 
+  double getCurrFrameTime() {
+    return (vid.isOpened() ? vid.get(CV_CAP_PROP_POS_MSEC)/1000.0 : -1);
+  };
   double getFPS() {
     return (vid.isOpened() ? vid.get(CV_CAP_PROP_FPS) : 0.0);
   };

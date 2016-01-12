@@ -25,10 +25,15 @@ using namespace input;
 class MediaServer {
 public:
   MediaServer(ros::NodeHandle& nh, \
-      bool idle) : \
+      bool idle, double customStartSec) : \
       imageSeqID(0), source(NULL), \
       idleEnabled(idle), inIdleMode(true), \
       streamMode(false), repeatMode(false) {
+    // Set start time for publishing video frames
+    if (customStartSec >= 0) {
+      customStartTime = ros::Time(customStartSec);
+    }
+
     // Setup image topic
     std::string image_topic = nh.resolveName("image");
     image_transport::ImageTransport it(nh);
@@ -330,7 +335,15 @@ private:
       if (hasFrame) {
         image_mutex.lock();
         imageBuf.header.seq = imageSeqID++;
-        imageBuf.header.stamp = ros::Time::now();
+        double customDeltaSec = \
+          (source->getType() == InputSource::VIDEO_FILE_SOURCE) ? \
+          ((VideoFileSource*) source)->getCurrFrameTime() : \
+          -1;
+        if (customDeltaSec >= 0) {
+          imageBuf.header.stamp = customStartTime + ros::Duration(customDeltaSec);
+        } else {
+          imageBuf.header.stamp = ros::Time::now();
+        }
         getEncodingString(imageBuf.image, imageBuf.encoding);
         image_mutex.unlock();
       } else { // Something went wrong with getFrame
@@ -342,8 +355,16 @@ private:
             image_mutex.unlock();
             if (hasFrame) {
               image_mutex.lock();
+              double customDeltaSec = \
+                (source->getType() == InputSource::VIDEO_FILE_SOURCE) ? \
+                ((VideoFileSource*) source)->getCurrFrameTime() : \
+                -1;
+              if (customDeltaSec >= 0) {
+                imageBuf.header.stamp = customStartTime + ros::Duration(customDeltaSec);
+              } else {
+                imageBuf.header.stamp = ros::Time::now();
+              }
               imageBuf.header.seq = imageSeqID++;
-              imageBuf.header.stamp = ros::Time::now();
               getEncodingString(imageBuf.image, imageBuf.encoding);
               image_mutex.unlock();
             } else {
@@ -436,6 +457,8 @@ private:
   bool inIdleMode;
   bool streamMode;
   bool repeatMode;
+  
+  ros::Time customStartTime;
 };
 
 
@@ -444,11 +467,12 @@ int main(int argc, char** argv) {
   ros::NodeHandle nh;
   if (nh.resolveName("image") == "/image") {
     ROS_WARN_STREAM("Usage: " << argv[0] << \
-        " image:=<image topic> [idleAfterSourceDone]");
+        " image:=<image topic> [idleAfterSourceDone customStartTime]");
   }
 
   bool idleAfterSourceDone = (argc > 1) ? argv[1][0] != '0' : false;
-  MediaServer mediaServer(nh, idleAfterSourceDone);
+  double customStartSec = (argc > 2) ? atof(argv[2]) : -1.0;
+  MediaServer mediaServer(nh, idleAfterSourceDone, customStartSec);
   mediaServer.spin();
 
   return 0;
