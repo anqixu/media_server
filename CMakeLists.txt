@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_srvs
   sensor_msgs
   image_transport
+  camera_calibration_parsers
   cv_bridge
   message_generation
 )
@@ -70,7 +71,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES
-  CATKIN_DEPENDS roscpp std_msgs std_srvs sensor_msgs image_transport cv_bridge message_runtime
+  CATKIN_DEPENDS roscpp std_msgs std_srvs sensor_msgs image_transport camera_calibration_parsers cv_bridge message_runtime
 #  DEPENDS system_lib
 )
 
