@@ -169,6 +169,9 @@ bool ImageListSource::seek(double ratio) {
       hasStartTime = true;
       startTime = prevTime - elapsedTime;
     }
+    if (hasStartTime) {
+      fileID -= 1; // compensate for getFrame's auto-increment
+    }
   }
   return result;
 };
