@@ -238,7 +238,7 @@ void VideoDeviceSource::startStream() {
       logFile.open(tempStr.str().c_str(), ios::out | ios::app);
       if (!logFile.is_open()) {
         ostringstream err;
-        err << "Unable to open log file: " << tempStr;
+        err << "Unable to open log file: " << tempStr.str();
         throw err.str();
       }
       writeHeaderToFile(logFile);

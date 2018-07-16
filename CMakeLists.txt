@@ -20,7 +20,7 @@ set(Boost_USE_MULTITHREADED ON)
 find_package(Boost REQUIRED COMPONENTS system thread date_time filesystem)
 
 # Load OpenCV
-find_package(OpenCV REQUIRED COMPONENTS core imgproc highgui)
+find_package(OpenCV 3 REQUIRED COMPONENTS core imgproc highgui videoio)
 
 # Load EXIV
 find_package(Exiv2)
